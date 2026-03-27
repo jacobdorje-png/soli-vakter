@@ -158,7 +158,7 @@ body{font-family:var(--font);font-weight:300;background:var(--cream);color:var(-
 .day-time-label{min-width:80px;font-weight:400;color:var(--ink-muted);}
 .day-time-row select{flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:12px;background:var(--warm-white);color:var(--ink);}
 
-background:var(--gold-light);color:#7A5530;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:400;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:3px;}
+.cal-event{background:#FDE8D8;color:#A84A10;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:3px;}
 .cal-event-title{flex:1;font-weight:500;}
 .name-tag{background:var(--sage-light);color:var(--sage);border-radius:20px;padding:4px 10px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:5px;}
 .name-tag .remove{cursor:pointer;opacity:.6;font-size:15px;line-height:1;}
@@ -1346,7 +1346,7 @@ function openDayModal(loc, date) {
 
 function switchToEvent() {
   pendingEventLoc = document.getElementById('m-location').value;
-  pendingEventDate = document.getElementById('m-date').value;
+  pendingEventDate = selectedDays.length > 0 ? selectedDays[0].date : fmtDate(new Date());
   closeModal();
   document.getElementById('ev-title').value = '';
   document.getElementById('event-modal-error').style.display = 'none';

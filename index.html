@@ -746,22 +746,22 @@ async function doSignup(shiftId) {
   const { error } = await sb.from('signups').insert({ shift_id: shiftId, user_id: currentProfile.id, status: 'pending' });
   if (error) { toast('Feil: ' + error.message); return; }
   toast('Påmelding sendt — venter på godkjenning');
-  showPage(currentPage);
+  showPage(currentPage, savedScrollY);
   if (currentProfile.is_admin) refreshPendingCount();
 }
 
-async function doSignupDirect(shiftId) {
+async function doSignupDirect(shiftId) { savedScrollY = window.scrollY;
   const { error } = await sb.from('signups').insert({ shift_id: shiftId, user_id: currentProfile.id, status: 'approved' });
   if (error) { toast('Feil: ' + error.message); return; }
   toast('Du er satt på vakten!');
-  showPage(currentPage);
+  showPage(currentPage, savedScrollY);
 }
 
-async function doLeave(shiftId) {
+async function doLeave(shiftId) { savedScrollY = window.scrollY;
   const { error } = await sb.from('signups').delete().eq('shift_id', shiftId).eq('user_id', currentProfile.id);
   if (error) { toast('Feil: ' + error.message); return; }
   toast('Du er avmeldt vakten');
-  showPage(currentPage);
+  showPage(currentPage, savedScrollY);
 }
 
 async function doApprove(signupId) {
@@ -780,11 +780,11 @@ async function doReject(signupId) {
   refreshPendingCount();
 }
 
-async function doDeleteShift(shiftId) {
+async function doDeleteShift(shiftId) { savedScrollY = window.scrollY;
   const { error } = await sb.from('shifts').delete().eq('id', shiftId);
   if (error) { toast('Feil: ' + error.message); return; }
   toast('Vakt slettet');
-  showPage(currentPage);
+  showPage(currentPage, savedScrollY);
 }
 
 async function saveShift() {
@@ -828,7 +828,7 @@ async function saveShift() {
     btn.disabled = false; btn.textContent = 'Lagre vakter';
     closeModal();
     toast(`${selectedDays.length > 1 ? selectedDays.length + ' vakter' : 'Vakt'} lagret!`);
-    showPage(currentPage);
+    showPage(currentPage, savedScrollY);
 
   } catch(e) {
     btn.disabled = false; btn.textContent = 'Lagre vakter';
@@ -837,7 +837,10 @@ async function saveShift() {
 }
 
 // ─── PAGES ───────────────────────────────────────────────────────────────────
-async function showPage(page) {
+let _scrollRestore = null; // set this before showPage to restore scroll after render
+
+async function showPage(page, restoreScroll) {
+  const scrollY = restoreScroll !== undefined ? restoreScroll : (page === currentPage ? window.scrollY : 0);
   currentPage = page;
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const nav = document.getElementById('nav-' + page);
@@ -852,6 +855,10 @@ async function showPage(page) {
   else if (page === 'admin-shifts') await renderAdminShifts(c);
   else if (page === 'admin-approvals') await renderAdminApprovals(c);
   else if (page === 'admin-employees') await renderAdminEmployees(c);
+
+  if (scrollY > 0) {
+    requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }));
+  }
 }
 
 async function renderToday(c) {
@@ -966,22 +973,34 @@ async function renderForside(c) {
     });
 
     const allPeople = dayShifts.flatMap(s => {
-      const approved = (s.signups||[]).filter(sg => sg.status === 'approved');
-      if (approved.length > 0) {
-        return approved.map(sg => ({ name: sg.profiles?.name || '?', start: s.start_time, end: s.end_time, shiftId: s.id, userId: sg.user_id, isFri: false }));
-      } else if (s.role && s.role.includes('Fri')) {
-        // Fri shift — no signup, show from role
-        return [{ name: 'Fri', start: s.start_time, end: s.end_time, shiftId: s.id, userId: null, isFri: true }];
+      // Use role field (comma-separated names) for display — reliable regardless of profile match
+      const roleNames = (s.role || '').split(',').map(n => n.trim()).filter(Boolean);
+      if (roleNames.length > 0 && roleNames[0] !== 'Vakt') {
+        return roleNames.map(name => ({
+          name,
+          start: s.start_time,
+          end: s.end_time,
+          shiftId: s.id,
+          isFri: name === 'Fri',
+          isMe: name.toLowerCase() === currentProfile.name.split(' ')[0].toLowerCase()
+        }));
       }
-      return [];
+      // Fallback to signups if role is generic
+      return (s.signups||[]).filter(sg => sg.status === 'approved').map(sg => ({
+        name: sg.profiles?.name || '?',
+        start: s.start_time,
+        end: s.end_time,
+        shiftId: s.id,
+        isFri: false,
+        isMe: sg.user_id === currentProfile.id
+      }));
     });
 
     allPeople.forEach(p => {
       const firstName = p.isFri ? '🌴 Fri' : p.name.split(' ')[0];
-      const isMe = p.userId === currentProfile.id;
       const style = p.isFri
         ? 'background:var(--gold-light);color:var(--gold);'
-        : isMe ? 'background:#C8E6D4;color:#2E7D4F;' : '';
+        : p.isMe ? 'background:#C8E6D4;color:#2E7D4F;' : '';
       inner += `<div class="cal-person" style="${style}">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
           <div>
@@ -1474,7 +1493,7 @@ async function saveEvent() {
   if (error) { showErr(err, 'Feil: ' + error.message); return; }
   document.getElementById('event-modal').classList.remove('open');
   toast('Hendelse lagt til!');
-  showPage(currentPage);
+  showPage(currentPage, savedScrollY);
 }
 
 function editEvent(ev) {
@@ -1510,7 +1529,7 @@ async function updateEvent() {
   if (error) { showErr(err, 'Feil: ' + error.message); return; }
   document.getElementById('edit-event-modal').classList.remove('open');
   toast('Hendelse oppdatert!');
-  showPage(currentPage);
+  showPage(currentPage, savedScrollY);
 }
 
 function deleteEventFromEdit() {
@@ -1519,11 +1538,11 @@ function deleteEventFromEdit() {
   deleteEvent(id);
 }
 
-async function deleteEvent(eventId) {
+async function deleteEvent(eventId) { savedScrollY = window.scrollY;
   const { error } = await sb.from('events').delete().eq('id', eventId);
   if (error) { toast('Feil: ' + error.message); return; }
   toast('Hendelse slettet');
-  showPage(currentPage);
+  showPage(currentPage, savedScrollY);
 }
 
 // Day click — go straight to shift modal

@@ -131,6 +131,25 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 .pill-pending{background:var(--gold-light);color:var(--gold);}
 .pill-admin{background:var(--ink);color:white;}
 
+/* CALENDAR */
+.cal-wrap{margin-bottom:2.5rem;}
+.cal-loc-header{display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding-bottom:10px;border-bottom:2px solid var(--border);}
+.cal-loc-title{font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:500;}
+.cal-week-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:1.5rem 0 .5rem;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-day{background:var(--warm-white);border:1px solid var(--border);border-radius:8px;padding:8px;min-height:80px;}
+.cal-day.today{border-color:var(--gold);background:var(--gold-light);}
+.cal-day.past{opacity:.5;}
+.cal-day-name{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:2px;}
+.cal-day-num{font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:500;margin-bottom:4px;line-height:1;}
+.cal-day.today .cal-day-num{color:var(--gold);}
+.cal-shift-pill{background:var(--sage-light);color:var(--sage);border-radius:4px;padding:2px 5px;font-size:10px;font-weight:500;margin-bottom:2px;cursor:pointer;line-height:1.4;}
+.cal-shift-pill.pending{background:var(--gold-light);color:var(--gold);}
+.cal-shift-pill.full{background:var(--cream);color:var(--ink-muted);border:1px solid var(--border);}
+.cal-empty{color:var(--ink-faint);font-size:11px;font-style:italic;}
+.cal-day-header-row{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
+.cal-day-header-cell{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);text-align:center;padding:4px 0;}
+
 /* LOADING */
 .spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -230,11 +249,11 @@ create policy "update_own_profile" on public.profiles for update to authenticate
 create policy "admin_update_profiles" on public.profiles for update to authenticated using ((select is_admin from public.profiles where id = auth.uid()));
 
 create policy "read_shifts" on public.shifts for select to authenticated using (true);
-create policy "admin_insert_shifts" on public.shifts for insert to authenticated with check ((select is_admin from public.profiles where id = auth.uid()));
+create policy "insert_shifts" on public.shifts for insert to authenticated with check (true);
 create policy "admin_delete_shifts" on public.shifts for delete to authenticated using ((select is_admin from public.profiles where id = auth.uid()));
 
 create policy "read_signups" on public.signups for select to authenticated using (true);
-create policy "insert_own_signup" on public.signups for insert to authenticated with check (auth.uid() = user_id);
+create policy "insert_own_signup" on public.signups for insert to authenticated with check (true);
 create policy "delete_own_signup" on public.signups for delete to authenticated using (auth.uid() = user_id or (select is_admin from public.profiles where id = auth.uid()));
 create policy "admin_update_signups" on public.signups for update to authenticated using ((select is_admin from public.profiles where id = auth.uid()));
 
@@ -324,6 +343,7 @@ create or replace trigger on_auth_user_created
   <div class="topbar">
     <div class="topbar-logo">Soli Brug</div>
     <div class="topbar-right">
+      <button class="btn btn-success" onclick="openShiftModal()" style="background:#2E7D4F;color:white;border:none;font-weight:500;">+ Legg til vakt</button>
       <span class="user-chip" id="user-chip"></span>
       <span class="admin-badge" id="admin-badge" style="display:none;">Admin</span>
       <button class="btn btn-outline btn-sm" onclick="doLogout()">Logg ut</button>
@@ -359,10 +379,10 @@ create or replace trigger on_auth_user_created
 <!-- ADD SHIFT MODAL -->
 <div class="modal-backdrop" id="shift-modal">
   <div class="modal">
-    <h3>Legg til ny vakt</h3>
+    <h3>Legg til vakt</h3>
     <div class="field">
       <label>Lokasjon</label>
-      <select id="m-location">
+      <select id="m-location" onchange="updateModalTimes()">
         <option value="soli">Soli</option>
         <option value="restaurant">Fredrikstad</option>
         <option value="fredrikstad">Smia</option>
@@ -373,21 +393,23 @@ create or replace trigger on_auth_user_created
       <input type="date" id="m-date" />
     </div>
     <div style="display:flex;gap:10px;">
-      <div class="field" style="flex:1;"><label>Fra</label><input type="time" id="m-start" value="09:00" /></div>
-      <div class="field" style="flex:1;"><label>Til</label><input type="time" id="m-end" value="17:00" /></div>
+      <div class="field" style="flex:1;"><label>Fra</label><input type="time" id="m-start" value="13:00" /></div>
+      <div class="field" style="flex:1;"><label>Til</label><input type="time" id="m-end" value="18:00" /></div>
     </div>
     <div class="field">
-      <label>Rolle</label>
+      <label>Hvem skal jobbe? (valgfritt)</label>
+      <select id="m-person" multiple style="height:100px;">
+      </select>
+      <div style="font-size:11px;color:var(--ink-faint);margin-top:4px;">Hold Cmd (Mac) eller Ctrl (Windows) for å velge flere</div>
+    </div>
+    <div class="field">
+      <label>Rolle (valgfritt)</label>
       <input type="text" id="m-role" placeholder="f.eks. Gallerivert, Servitør..." />
-    </div>
-    <div class="field">
-      <label>Antall plasser</label>
-      <input type="number" id="m-slots" value="1" min="1" max="20" />
     </div>
     <div id="shift-modal-error" class="error-msg"></div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal()">Avbryt</button>
-      <button class="btn btn-gold" id="save-shift-btn" onclick="saveShift()">Opprett vakt</button>
+      <button class="btn btn-gold" id="save-shift-btn" onclick="saveShift()">Lagre vakt</button>
     </div>
   </div>
 </div>
@@ -595,6 +617,13 @@ async function doSignup(shiftId) {
   if (currentProfile.is_admin) refreshPendingCount();
 }
 
+async function doSignupDirect(shiftId) {
+  const { error } = await sb.from('signups').insert({ shift_id: shiftId, user_id: currentProfile.id, status: 'approved' });
+  if (error) { toast('Feil: ' + error.message); return; }
+  toast('Du er satt på vakten!');
+  showPage(currentPage);
+}
+
 async function doLeave(shiftId) {
   const { error } = await sb.from('signups').delete().eq('shift_id', shiftId).eq('user_id', currentProfile.id);
   if (error) { toast('Feil: ' + error.message); return; }
@@ -633,13 +662,19 @@ async function saveShift() {
   const start_time = document.getElementById('m-start').value;
   const end_time = document.getElementById('m-end').value;
   const role = document.getElementById('m-role').value.trim() || 'Vakt';
-  const slots = parseInt(document.getElementById('m-slots').value) || 1;
+  const selectedPeople = Array.from(document.getElementById('m-person').selectedOptions).map(o => o.value);
+  const slots = Math.max(selectedPeople.length, 1);
   if (!date) { showErr(err, 'Velg dato'); return; }
   err.style.display = 'none';
   btn.disabled = true; btn.textContent = 'Lagrer...';
-  const { error } = await sb.from('shifts').insert({ location, date, start_time, end_time, role, slots });
-  btn.disabled = false; btn.textContent = 'Opprett vakt';
-  if (error) { showErr(err, 'Feil: ' + error.message); return; }
+  const { data: shiftData, error } = await sb.from('shifts').insert({ location, date, start_time, end_time, role, slots }).select().single();
+  if (error) { showErr(err, 'Feil: ' + error.message); btn.disabled = false; btn.textContent = 'Lagre vakt'; return; }
+  // Add selected people directly as approved
+  if (selectedPeople.length > 0) {
+    const signups = selectedPeople.map(uid => ({ shift_id: shiftData.id, user_id: uid, status: 'approved' }));
+    await sb.from('signups').insert(signups);
+  }
+  btn.disabled = false; btn.textContent = 'Lagre vakt';
   closeModal();
   toast('Vakt opprettet!');
   showPage(currentPage);
@@ -701,43 +736,78 @@ async function renderToday(c) {
 
 async function renderForside(c) {
   const start = new Date();
+  start.setHours(0,0,0,0);
   const end = addDays(start, 13);
   const shifts = await fetchShifts(null, fmtDate(start), fmtDate(end));
-  const days = Array.from({length: 14}, (_, i) => addDays(start, i));
 
-  let html = `<div class="page-header-row"><div class="page-header" style="margin-bottom:0;"><h1>Ukeoversikt</h1><p>Alle steder — neste to uker</p></div>`;
+  // Split into two weeks
+  const week1 = Array.from({length:7}, (_,i) => addDays(start, i));
+  const week2 = Array.from({length:7}, (_,i) => addDays(start, i+7));
+  const todayStr = fmtDate(new Date());
+
+  const DAY_SHORT = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
+
+  function calDay(d, locKey) {
+    const ds = fmtDate(d);
+    const isToday = ds === todayStr;
+    const isPast = ds < todayStr;
+    const dayShifts = shifts.filter(s => s.location === locKey && s.date === ds);
+    const dayOfWeek = (d.getDay() + 6) % 7; // Mon=0
+
+    let cls = 'cal-day';
+    if (isToday) cls += ' today';
+    else if (isPast) cls += ' past';
+
+    let inner = `<div class="cal-day-name">${DAY_SHORT[dayOfWeek]}</div>`;
+    inner += `<div class="cal-day-num">${d.getDate()}.</div>`;
+
+    if (dayShifts.length === 0) {
+      inner += `<div class="cal-empty">–</div>`;
+    } else {
+      dayShifts.forEach(s => {
+        const approved = (s.signups||[]).filter(sg=>sg.status==='approved').length;
+        const isFull = approved >= s.slots;
+        const mySignup = (s.signups||[]).find(sg=>sg.user_id===currentProfile.id);
+        let pillCls = 'cal-shift-pill';
+        if (isFull) pillCls += ' full';
+        else if (mySignup) pillCls += ' pending';
+        inner += `<div class="${pillCls}" onclick="showPage('${locKey}')" title="${s.role} ${s.start_time.substring(0,5)}–${s.end_time.substring(0,5)}">${s.start_time.substring(0,5)} ${s.role.substring(0,8)}</div>`;
+      });
+    }
+
+    return `<div class="${cls}">${inner}</div>`;
+  }
+
+  function renderCalGrid(week, locKey) {
+    return `<div class="cal-grid">${week.map(d => calDay(d, locKey)).join('')}</div>`;
+  }
+
+  let html = `<div class="page-header-row"><div class="page-header" style="margin-bottom:0;"><h1>Ukeoversikt</h1><p>Neste to uker — alle steder</p></div>`;
   if (currentProfile.is_admin) html += `<button class="btn btn-gold" onclick="openShiftModal()">+ Legg til vakt</button>`;
   html += `</div>`;
 
   for (const [key, loc] of Object.entries(LOCS)) {
-    const locShifts = shifts.filter(s => s.location === key);
-
-    html += `<div style="margin-top:2.5rem;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding-bottom:10px;border-bottom:2px solid ${loc.color};">
+    html += `<div class="cal-wrap">
+      <div class="cal-loc-header">
         <span style="width:10px;height:10px;border-radius:50%;background:${loc.color};display:inline-block;flex-shrink:0;"></span>
-        <h2 style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:500;color:var(--ink);">${loc.name}</h2>
-      </div>`;
-
-    let hadAny = false;
-    days.forEach(d => {
-      const ds = fmtDate(d);
-      const dayShifts = locShifts.filter(s => s.date === ds);
-      const isToday = ds === fmtDate(new Date());
-      if (!dayShifts.length) return;
-      hadAny = true;
-      html += `<div class="day-section"><div class="day-header">${norDay(d)}${isToday ? '<span class="today-marker">I dag</span>' : ''}</div>`;
-      dayShifts.forEach(s => { html += shiftCard(s, false); });
-      html += `</div>`;
-    });
-
-    if (!hadAny) {
-      html += `<div class="empty-msg" style="padding:8px 0;">Ingen vakter planlagt de neste 2 ukene</div>`;
-    }
-
-    html += `</div>`;
+        <span class="cal-loc-title">${loc.name}</span>
+      </div>
+      <div class="cal-week-label">Uke ${getWeekNumber(week1[0])}</div>
+      ${renderCalGrid(week1, key)}
+      <div class="cal-week-label">Uke ${getWeekNumber(week2[0])}</div>
+      ${renderCalGrid(week2, key)}
+    </div>`;
   }
 
   c.innerHTML = html;
+}
+
+function getWeekNumber(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1)/7);
 }
 
 async function renderMy(c) {
@@ -866,16 +936,15 @@ function shiftCard(s, showLoc) {
   });
 
   let actions = '';
-  if (!currentProfile.is_admin) {
-    if (mySignup?.status === 'approved') {
-      actions = `<button class="btn btn-outline btn-sm" onclick="doLeave('${s.id}')">Meld av</button>`;
-    } else if (mySignup?.status === 'pending') {
-      actions = `<button class="btn btn-outline btn-sm" disabled>Venter...</button>`;
-    } else if (!isFull) {
-      actions = `<button class="btn btn-gold btn-sm" onclick="doSignup('${s.id}')">Meld på</button>`;
-    }
-  } else {
-    actions = `<button class="btn btn-danger btn-sm" onclick="doDeleteShift('${s.id}')">Slett</button>`;
+  if (mySignup?.status === 'approved') {
+    actions = `<button class="btn btn-outline btn-sm" onclick="doLeave('${s.id}')">Meld av</button>`;
+  } else if (mySignup?.status === 'pending') {
+    actions = `<button class="btn btn-outline btn-sm" disabled>Venter...</button>`;
+  } else if (!isFull) {
+    actions = `<button class="btn btn-gold btn-sm" onclick="doSignupDirect('${s.id}')">Meld på</button>`;
+  }
+  if (currentProfile.is_admin) {
+    actions += ` <button class="btn btn-danger btn-sm" onclick="doDeleteShift('${s.id}')">Slett</button>`;
   }
 
   return `<div class="shift-card">
@@ -893,13 +962,39 @@ function shiftCard(s, showLoc) {
 }
 
 // ─── MODAL ───────────────────────────────────────────────────────────────────
-function openShiftModal(loc) {
+const LOC_TIMES = {
+  soli:        { start: '13:00', end: '18:00' },
+  restaurant:  { start: '12:00', end: '16:00' },
+  fredrikstad: { start: '12:00', end: '18:00' }
+};
+
+function updateModalTimes() {
+  const loc = document.getElementById('m-location').value;
+  const times = LOC_TIMES[loc];
+  document.getElementById('m-start').value = times.start;
+  document.getElementById('m-end').value = times.end;
+}
+
+async function openShiftModal(loc) {
   if (loc) document.getElementById('m-location').value = loc;
+  updateModalTimes();
   document.getElementById('m-date').value = fmtDate(new Date());
   document.getElementById('m-role').value = '';
   document.getElementById('shift-modal-error').style.display = 'none';
+
+  // Load profiles into person selector
+  const profiles = await fetchAllProfiles();
+  const sel = document.getElementById('m-person');
+  sel.innerHTML = profiles.map(p => `<option value="${p.id}">${p.name || p.email}</option>`).join('');
+
+  // Pre-select current user
+  Array.from(sel.options).forEach(o => {
+    if (o.value === currentProfile.id) o.selected = true;
+  });
+
   document.getElementById('shift-modal').classList.add('open');
 }
+
 function closeModal() { document.getElementById('shift-modal').classList.remove('open'); }
 document.addEventListener('click', e => { if (e.target.classList.contains('modal-backdrop')) closeModal(); });
 

@@ -164,7 +164,12 @@ body{font-family:var(--font);font-weight:300;background:var(--cream);color:var(-
 .cal-day.past.all-day-event{background:#F2D4C2;}
 color:#A84A10;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:3px;}
 .cal-event-title{flex:1;font-weight:500;}
-.name-tag{background:var(--sage-light);color:var(--sage);border-radius:20px;padding:4px 10px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:5px;}
+.name-chip-btn{padding:5px 10px;border-radius:20px;border:1px solid var(--border);background:var(--cream);font-size:12px;cursor:pointer;transition:all .15s;font-family:var(--font);color:var(--ink-muted);}
+.name-chip-btn:hover{border-color:var(--gold);color:var(--ink);}
+.name-chip-btn.selected{background:var(--sage-light);color:var(--sage);border-color:#A8C8B4;font-weight:500;}
+.name-chip-btn.fri-btn{border-color:#D4B896;color:var(--gold);}
+.name-chip-btn.fri-btn.selected{background:var(--gold-light);color:var(--gold);border-color:var(--gold);}
+color:var(--sage);border-radius:20px;padding:4px 10px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:5px;}
 .name-tag .remove{cursor:pointer;opacity:.6;font-size:15px;line-height:1;}
 .name-tag .remove:hover{opacity:1;}
 .suggestion-item{padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);}
@@ -435,9 +440,10 @@ create or replace trigger on_auth_user_created
 
     <div class="field">
       <label>Hvem jobber?</label>
+      <div id="saved-name-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;"></div>
       <div id="name-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:10px;"></div>
       <div style="display:flex;gap:6px;">
-        <input type="text" id="m-name-input" placeholder="Skriv navn og trykk Enter..." style="flex:1;" onkeydown="handleNameKey(event)" oninput="showNameSuggestions()" autocomplete="off" />
+        <input type="text" id="m-name-input" placeholder="Legg til nytt navn..." style="flex:1;" onkeydown="handleNameKey(event)" oninput="showNameSuggestions()" autocomplete="off" />
         <button class="btn btn-outline btn-sm" onclick="addNameFromInput()">+</button>
       </div>
       <div id="name-suggestions" style="background:var(--warm-white);border:1px solid var(--border);border-radius:8px;margin-top:4px;display:none;max-height:120px;overflow-y:auto;"></div>
@@ -791,10 +797,11 @@ async function saveShift() {
     const location = document.getElementById('m-location').value;
 
     if (selectedDays.length === 0) { showErr(err, 'Velg minst én dag'); return; }
+    if (modalNames.length === 0) { showErr(err, 'Legg til minst ett navn'); return; }
 
     btn.disabled = true; btn.textContent = 'Lagrer...';
 
-    const names = modalNames.length > 0 ? modalNames : [{ name: currentProfile.name.split(' ')[0], userId: currentProfile.id }];
+    const names = modalNames;
     const role = names.map(n => n.name).join(', ');
     const slots = names.length;
 
@@ -807,6 +814,7 @@ async function saveShift() {
       if (shiftError) throw new Error(shiftError.message);
 
       for (const n of names) {
+        if (n.name === 'Fri') { saveName(n.name); continue; } // Fri = no signup, just label
         let userId = n.userId;
         if (!userId) {
           const { data: found } = await sb.from('profiles').select('id').ilike('name', n.name + '%').limit(1);
@@ -957,19 +965,28 @@ async function renderForside(c) {
       </div>`;
     });
 
-    const allPeople = dayShifts.flatMap(s =>
-      (s.signups||[]).filter(sg => sg.status === 'approved')
-        .map(sg => ({ name: sg.profiles?.name || s.role || '?', start: s.start_time, end: s.end_time, shiftId: s.id, userId: sg.user_id }))
-    );
+    const allPeople = dayShifts.flatMap(s => {
+      const approved = (s.signups||[]).filter(sg => sg.status === 'approved');
+      if (approved.length > 0) {
+        return approved.map(sg => ({ name: sg.profiles?.name || '?', start: s.start_time, end: s.end_time, shiftId: s.id, userId: sg.user_id, isFri: false }));
+      } else if (s.role && s.role.includes('Fri')) {
+        // Fri shift — no signup, show from role
+        return [{ name: 'Fri', start: s.start_time, end: s.end_time, shiftId: s.id, userId: null, isFri: true }];
+      }
+      return [];
+    });
 
     allPeople.forEach(p => {
-      const firstName = p.name.split(' ')[0];
+      const firstName = p.isFri ? '🌴 Fri' : p.name.split(' ')[0];
       const isMe = p.userId === currentProfile.id;
-      inner += `<div class="cal-person" style="${isMe ? 'background:#C8E6D4;color:#2E7D4F;' : ''}">
+      const style = p.isFri
+        ? 'background:var(--gold-light);color:var(--gold);'
+        : isMe ? 'background:#C8E6D4;color:#2E7D4F;' : '';
+      inner += `<div class="cal-person" style="${style}">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
           <div>
             <div class="cal-person-name">${firstName}</div>
-            <div class="cal-person-time">${p.start.substring(0,5)}–${p.end.substring(0,5)}</div>
+            ${!p.isFri ? `<div class="cal-person-time">${p.start.substring(0,5)}–${p.end.substring(0,5)}</div>` : ''}
           </div>
           <span onclick="event.stopPropagation();promptDelete('${p.shiftId}')" style="cursor:pointer;opacity:.4;font-size:13px;padding:0 2px;" title="Slett">×</span>
         </div>
@@ -1307,14 +1324,18 @@ function collectDayTimes() {
   });
 }
 
+let savedScrollY = 0;
+
 async function openShiftModalForDay(loc, date) {
+  savedScrollY = window.scrollY;
   loadSavedNames();
-  modalNames = [{ name: currentProfile.name.split(' ')[0], userId: currentProfile.id }];
+  modalNames = []; // Start empty — user picks names explicitly
   document.getElementById('m-location').value = loc;
   const { start, end } = getDefaultTimes(loc);
   selectedDays = [{ date, start, end }];
   document.getElementById('shift-modal-error').style.display = 'none';
   renderNameTags();
+  renderSavedNameChips();
   renderDayPicker();
   document.getElementById('m-name-input').value = '';
   document.getElementById('name-suggestions').style.display = 'none';
@@ -1323,14 +1344,16 @@ async function openShiftModalForDay(loc, date) {
 }
 
 async function openShiftModal(loc) {
+  savedScrollY = window.scrollY;
   loadSavedNames();
-  modalNames = [{ name: currentProfile.name.split(' ')[0], userId: currentProfile.id }];
+  modalNames = [];
   if (loc) document.getElementById('m-location').value = loc;
   const locVal = document.getElementById('m-location').value;
   const { start, end } = getDefaultTimes(locVal);
   selectedDays = [{ date: fmtDate(new Date()), start, end }];
   document.getElementById('shift-modal-error').style.display = 'none';
   renderNameTags();
+  renderSavedNameChips();
   renderDayPicker();
   document.getElementById('m-name-input').value = '';
   document.getElementById('name-suggestions').style.display = 'none';
@@ -1371,6 +1394,7 @@ function addNameFromInput() {
     modalNames.push({ name: val, userId: null });
     saveName(val);
     renderNameTags();
+    renderSavedNameChips();
   }
   input.value = '';
   document.getElementById('name-suggestions').style.display = 'none';
@@ -1399,10 +1423,32 @@ function pickSuggestion(name) {
   document.getElementById('name-suggestions').style.display = 'none';
 }
 
-// Also seed saved names from profiles
+function renderSavedNameChips() {
+  loadSavedNames();
+  const box = document.getElementById('saved-name-chips');
+  if (!box) return;
+  const names = savedNames.filter(n => n !== 'Fri');
+  if (!names.length) { box.innerHTML = ''; return; }
+  box.innerHTML = names.map(n =>
+    `<button type="button" class="name-chip-btn${modalNames.find(m=>m.name===n)?' selected':''}" onclick="toggleSavedName('${n.replace(/'/g,"\\'")}') ">${n}</button>`
+  ).join('');
+}
+
+function toggleSavedName(name) {
+  const idx = modalNames.findIndex(n => n.name === name);
+  if (idx >= 0) {
+    modalNames.splice(idx, 1);
+  } else {
+    modalNames.push({ name, userId: null });
+    saveName(name);
+  }
+  renderNameTags();
+  renderSavedNameChips();
+}
 async function seedNamesFromProfiles() {
   const profiles = await fetchAllProfiles();
   profiles.forEach(p => { if (p.name) saveName(p.name.split(' ')[0]); });
+  renderSavedNameChips();
 }
 
 // ─── EVENTS ──────────────────────────────────────────────────────────────────
@@ -1541,11 +1587,13 @@ async function confirmDelete() {
 function closeModal() {
   document.getElementById('shift-modal').classList.remove('open');
   document.getElementById('name-suggestions').style.display = 'none';
+  setTimeout(() => window.scrollTo({ top: savedScrollY, behavior: 'instant' }), 50);
 }
 document.addEventListener('click', e => {
   if (e.target.classList.contains('modal-backdrop')) {
     e.target.classList.remove('open');
     document.getElementById('name-suggestions').style.display = 'none';
+    setTimeout(() => window.scrollTo({ top: savedScrollY, behavior: 'instant' }), 50);
   }
 });
 

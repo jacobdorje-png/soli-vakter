@@ -726,39 +726,50 @@ async function doDeleteShift(shiftId) {
 async function saveShift() {
   const btn = document.getElementById('save-shift-btn');
   const err = document.getElementById('shift-modal-error');
-  const location = document.getElementById('m-location').value;
-  const date = document.getElementById('m-date').value;
-  const start_time = document.getElementById('m-start').value;
-  const end_time = document.getElementById('m-end').value;
-  if (!date) { showErr(err, 'Velg dato'); return; }
   err.style.display = 'none';
-  btn.disabled = true; btn.textContent = 'Lagrer...';
 
-  const names = modalNames.length > 0 ? modalNames : [{ name: currentProfile.name.split(' ')[0], userId: currentProfile.id }];
+  try {
+    const location = document.getElementById('m-location').value;
+    const date = document.getElementById('m-date').value;
+    const start_time = document.getElementById('m-start').value;
+    const end_time = document.getElementById('m-end').value;
 
-  // Create one shift with slots = number of people
-  const { data: shiftData, error } = await sb.from('shifts')
-    .insert({ location, date, start_time, end_time, role: names.map(n=>n.name).join(', '), slots: names.length })
-    .select().single();
+    if (!date) { showErr(err, 'Velg dato'); return; }
+    if (!start_time) { showErr(err, 'Velg starttid'); return; }
+    if (!end_time) { showErr(err, 'Velg sluttid'); return; }
 
-  if (error) { showErr(err, 'Feil: ' + error.message); btn.disabled = false; btn.textContent = 'Lagre vakt'; return; }
+    btn.disabled = true; btn.textContent = 'Lagrer...';
 
-  // Sign up each person
-  for (const n of names) {
-    let userId = n.userId;
-    if (!userId) {
-      // Try to find by name
-      const { data: found } = await sb.from('profiles').select('id').ilike('name', n.name + '%').limit(1);
-      userId = found?.[0]?.id || currentProfile.id;
+    const names = modalNames.length > 0 ? modalNames : [{ name: currentProfile.name.split(' ')[0], userId: currentProfile.id }];
+
+    const { data: shiftData, error: shiftError } = await sb.from('shifts')
+      .insert({ location, date, start_time, end_time, role: names.map(n=>n.name).join(', '), slots: names.length })
+      .select().single();
+
+    if (shiftError) throw new Error(shiftError.message);
+
+    for (const n of names) {
+      let userId = n.userId;
+      if (!userId) {
+        const { data: found } = await sb.from('profiles').select('id').ilike('name', n.name + '%').limit(1);
+        userId = found?.[0]?.id || currentProfile.id;
+      }
+      const { error: signupError } = await sb.from('signups').insert({ shift_id: shiftData.id, user_id: userId, status: 'approved' });
+      if (signupError && !signupError.message.includes('duplicate')) {
+        console.warn('Signup error:', signupError.message);
+      }
+      saveName(n.name);
     }
-    await sb.from('signups').insert({ shift_id: shiftData.id, user_id: userId, status: 'approved' }).catch(()=>{});
-    saveName(n.name);
-  }
 
-  btn.disabled = false; btn.textContent = 'Lagre vakt';
-  closeModal();
-  toast('Vakt lagret!');
-  showPage(currentPage);
+    btn.disabled = false; btn.textContent = 'Lagre vakt';
+    closeModal();
+    toast('Vakt lagret!');
+    showPage(currentPage);
+
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Lagre vakt';
+    showErr(err, 'Feil: ' + e.message);
+  }
 }
 
 // ─── PAGES ───────────────────────────────────────────────────────────────────

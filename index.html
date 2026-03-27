@@ -164,7 +164,11 @@ body{font-family:var(--font);font-weight:300;background:var(--cream);color:var(-
 .cal-day.past.all-day-event{background:#F2D4C2;}
 color:#A84A10;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:3px;}
 .cal-event-title{flex:1;font-weight:500;}
-.name-chip-btn{padding:5px 10px;border-radius:20px;border:1px solid var(--border);background:var(--cream);font-size:12px;cursor:pointer;transition:all .15s;font-family:var(--font);color:var(--ink-muted);}
+.type-btn{padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--cream);font-size:13px;cursor:pointer;font-family:var(--font);color:var(--ink-muted);transition:all .15s;}
+.type-btn.active{background:var(--ink);color:white;border-color:var(--ink);}
+.type-btn:first-child.active{background:var(--sage);border-color:var(--sage);}
+.type-btn:last-child.active{background:var(--red);border-color:var(--red);color:white;}
+border-radius:20px;border:1px solid var(--border);background:var(--cream);font-size:12px;cursor:pointer;transition:all .15s;font-family:var(--font);color:var(--ink-muted);}
 .name-chip-btn:hover{border-color:var(--gold);color:var(--ink);}
 .name-chip-btn.selected{background:var(--sage-light);color:var(--sage);border-color:#A8C8B4;font-weight:500;}
 .name-chip-btn.fri-btn{border-color:#D4B896;color:var(--gold);}
@@ -447,6 +451,14 @@ create or replace trigger on_auth_user_created
         <button class="btn btn-outline btn-sm" onclick="addNameFromInput()">+</button>
       </div>
       <div id="name-suggestions" style="background:var(--warm-white);border:1px solid var(--border);border-radius:8px;margin-top:4px;display:none;max-height:120px;overflow-y:auto;"></div>
+    </div>
+
+    <div class="field">
+      <label>Type</label>
+      <div style="display:flex;gap:8px;">
+        <button type="button" id="type-jobb" class="type-btn active" onclick="setShiftType('jobb')">Jobb</button>
+        <button type="button" id="type-ferie" class="type-btn" onclick="setShiftType('ferie')">🏖 Ferie</button>
+      </div>
     </div>
 
     <div id="shift-modal-error" class="error-msg"></div>
@@ -802,7 +814,10 @@ async function saveShift() {
     btn.disabled = true; btn.textContent = 'Lagrer...';
 
     const names = modalNames;
-    const role = names.map(n => n.name).join(', ');
+    const isFerie = currentShiftType === 'ferie';
+    const role = isFerie
+      ? names.map(n => `${n.name}:ferie`).join(', ')
+      : names.map(n => n.name).join(', ');
     const slots = names.length;
 
     // Create one shift per day
@@ -973,39 +988,41 @@ async function renderForside(c) {
     });
 
     const allPeople = dayShifts.flatMap(s => {
-      // Use role field (comma-separated names) for display — reliable regardless of profile match
       const roleNames = (s.role || '').split(',').map(n => n.trim()).filter(Boolean);
       if (roleNames.length > 0 && roleNames[0] !== 'Vakt') {
-        return roleNames.map(name => ({
-          name,
-          start: s.start_time,
-          end: s.end_time,
-          shiftId: s.id,
-          isFri: name === 'Fri',
-          isMe: name.toLowerCase() === currentProfile.name.split(' ')[0].toLowerCase()
-        }));
+        return roleNames.map(entry => {
+          const isFerie = entry.endsWith(':ferie');
+          const name = isFerie ? entry.slice(0, -6) : entry;
+          return {
+            name,
+            start: s.start_time,
+            end: s.end_time,
+            shiftId: s.id,
+            isFerie,
+            isMe: name.toLowerCase() === currentProfile.name.split(' ')[0].toLowerCase()
+          };
+        });
       }
-      // Fallback to signups if role is generic
       return (s.signups||[]).filter(sg => sg.status === 'approved').map(sg => ({
         name: sg.profiles?.name || '?',
         start: s.start_time,
         end: s.end_time,
         shiftId: s.id,
-        isFri: false,
+        isFerie: false,
         isMe: sg.user_id === currentProfile.id
       }));
     });
 
     allPeople.forEach(p => {
-      const firstName = p.isFri ? '🌴 Fri' : p.name.split(' ')[0];
-      const style = p.isFri
-        ? 'background:var(--gold-light);color:var(--gold);'
+      const firstName = p.name.split(' ')[0];
+      const style = p.isFerie
+        ? 'background:var(--red-light);color:var(--red);border:1px solid #D4AAAA;'
         : p.isMe ? 'background:#C8E6D4;color:#2E7D4F;' : '';
       inner += `<div class="cal-person" style="${style}">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
           <div>
-            <div class="cal-person-name">${firstName}</div>
-            ${!p.isFri ? `<div class="cal-person-time">${p.start.substring(0,5)}–${p.end.substring(0,5)}</div>` : ''}
+            <div class="cal-person-name">${firstName}${p.isFerie ? ' 🏖' : ''}</div>
+            ${!p.isFerie ? `<div class="cal-person-time">${p.start.substring(0,5)}–${p.end.substring(0,5)}</div>` : ''}
           </div>
           <span onclick="event.stopPropagation();promptDelete('${p.shiftId}')" style="cursor:pointer;opacity:.4;font-size:13px;padding:0 2px;" title="Slett">×</span>
         </div>
@@ -1343,12 +1360,24 @@ function collectDayTimes() {
   });
 }
 
+let currentShiftType = 'jobb';
+
+function setShiftType(type) {
+  currentShiftType = type;
+  document.getElementById('type-jobb').classList.toggle('active', type === 'jobb');
+  document.getElementById('type-ferie').classList.toggle('active', type === 'ferie');
+  // Hide time pickers for ferie
+  document.getElementById('day-times-list').style.opacity = type === 'ferie' ? '0.4' : '1';
+}
+
 let savedScrollY = 0;
 
 async function openShiftModalForDay(loc, date) {
   savedScrollY = window.scrollY;
   loadSavedNames();
-  modalNames = []; // Start empty — user picks names explicitly
+  modalNames = [];
+  currentShiftType = 'jobb';
+  setShiftType('jobb');
   document.getElementById('m-location').value = loc;
   const { start, end } = getDefaultTimes(loc);
   selectedDays = [{ date, start, end }];
@@ -1366,6 +1395,8 @@ async function openShiftModal(loc) {
   savedScrollY = window.scrollY;
   loadSavedNames();
   modalNames = [];
+  currentShiftType = 'jobb';
+  setShiftType('jobb');
   if (loc) document.getElementById('m-location').value = loc;
   const locVal = document.getElementById('m-location').value;
   const { start, end } = getDefaultTimes(locVal);

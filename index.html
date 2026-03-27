@@ -1383,34 +1383,6 @@ async function confirmDelete() {
   document.getElementById('delete-modal').classList.remove('open');
 }
 
-async function openShiftModalForDay(loc, date) {
-  loadSavedNames();
-  modalNames = [{ name: currentProfile.name.split(' ')[0], userId: currentProfile.id }];
-  document.getElementById('m-location').value = loc;
-  updateModalTimes();
-  document.getElementById('m-date').value = date;
-  document.getElementById('shift-modal-error').style.display = 'none';
-  renderNameTags();
-  document.getElementById('m-name-input').value = '';
-  document.getElementById('name-suggestions').style.display = 'none';
-  document.getElementById('shift-modal').classList.add('open');
-  seedNamesFromProfiles();
-}
-
-async function openShiftModal(loc) {
-  loadSavedNames();
-  modalNames = [{ name: currentProfile.name.split(' ')[0], userId: currentProfile.id }];
-  if (loc) document.getElementById('m-location').value = loc;
-  updateModalTimes();
-  document.getElementById('m-date').value = fmtDate(new Date());
-  document.getElementById('shift-modal-error').style.display = 'none';
-  renderNameTags();
-  document.getElementById('m-name-input').value = '';
-  document.getElementById('name-suggestions').style.display = 'none';
-  document.getElementById('shift-modal').classList.add('open');
-  seedNamesFromProfiles();
-}
-
 function closeModal() {
   document.getElementById('shift-modal').classList.remove('open');
   document.getElementById('name-suggestions').style.display = 'none';

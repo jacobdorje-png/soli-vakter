@@ -487,6 +487,44 @@ create or replace trigger on_auth_user_created
   </div>
 </div>
 
+<!-- EDIT EVENT MODAL -->
+<div class="modal-backdrop" id="edit-event-modal">
+  <div class="modal" style="max-width:360px;">
+    <h3>Rediger hendelse</h3>
+    <input type="hidden" id="edit-ev-id" />
+    <div class="field">
+      <label>Dato</label>
+      <input type="date" id="edit-ev-date" />
+    </div>
+    <div class="field">
+      <label>Sted</label>
+      <select id="edit-ev-location">
+        <option value="soli">Soli</option>
+        <option value="restaurant">Fredrikstad</option>
+        <option value="fredrikstad">Smia</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Tittel</label>
+      <input type="text" id="edit-ev-title" onkeydown="if(event.key==='Enter')updateEvent()" />
+    </div>
+    <div class="field">
+      <label>Tidspunkt <span style="color:var(--ink-faint);font-weight:300;">(valgfritt)</span></label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="edit-ev-start" style="flex:1;"></select>
+        <span style="color:var(--ink-faint);font-size:12px;">–</span>
+        <select id="edit-ev-end" style="flex:1;"></select>
+      </div>
+    </div>
+    <div id="edit-event-error" class="error-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="deleteEventFromEdit()" style="margin-right:auto;">Slett</button>
+      <button class="btn btn-outline" onclick="document.getElementById('edit-event-modal').classList.remove('open')">Avbryt</button>
+      <button class="btn btn-gold" onclick="updateEvent()">Lagre</button>
+    </div>
+  </div>
+</div>
+
 <!-- DELETE CONFIRM MODAL -->
 <div class="modal-backdrop" id="delete-modal">
   <div class="modal" style="max-width:360px;">
@@ -864,6 +902,9 @@ async function renderForside(c) {
   const DAY_SHORT = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
   const MON_NO = ['januar','februar','mars','april','mai','juni','juli','august','september','oktober','november','desember'];
 
+  window.eventsMap = {};
+  events.forEach(e => { window.eventsMap[e.id] = e; });
+
   function calDay(d, locKey) {
     const ds = fmtDate(d);
     const isToday = ds === todayStr;
@@ -883,7 +924,7 @@ async function renderForside(c) {
     dayEvents.forEach(ev => {
       const timeStr = ev.start_time ? ` · ${ev.start_time.substring(0,5)}${ev.end_time ? '–'+ev.end_time.substring(0,5) : ''}` : '';
       inner += `<div class="cal-event">
-        <span class="cal-event-title">${ev.title}${timeStr}</span>
+        <span class="cal-event-title" onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;">${ev.title}${timeStr}</span>
         <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:13px;" title="Slett">×</span>
       </div>`;
     });
@@ -1362,7 +1403,47 @@ async function saveEvent() {
   showPage(currentPage);
 }
 
-async function deleteEvent(eventId) {
+function editEvent(ev) {
+  const opts = buildTimeOptions();
+  const timeOpts = opts.map(t => `<option value="${t}">${t}</option>`).join('');
+  const blankStart = `<option value="">Hele dagen</option>`;
+  const blankEnd = `<option value="">–</option>`;
+
+  document.getElementById('edit-ev-id').value = ev.id;
+  document.getElementById('edit-ev-date').value = ev.date;
+  document.getElementById('edit-ev-location').value = ev.location;
+  document.getElementById('edit-ev-title').value = ev.title;
+  document.getElementById('edit-ev-start').innerHTML = blankStart + timeOpts;
+  document.getElementById('edit-ev-end').innerHTML = blankEnd + timeOpts;
+  if (ev.start_time) document.getElementById('edit-ev-start').value = ev.start_time.substring(0,5);
+  if (ev.end_time) document.getElementById('edit-ev-end').value = ev.end_time.substring(0,5);
+  document.getElementById('edit-event-error').style.display = 'none';
+  document.getElementById('edit-event-modal').classList.add('open');
+  setTimeout(() => document.getElementById('edit-ev-title').focus(), 150);
+}
+
+async function updateEvent() {
+  const id = document.getElementById('edit-ev-id').value;
+  const title = document.getElementById('edit-ev-title').value.trim();
+  const location = document.getElementById('edit-ev-location').value;
+  const date = document.getElementById('edit-ev-date').value;
+  const start_time = document.getElementById('edit-ev-start').value || null;
+  const end_time = document.getElementById('edit-ev-end').value || null;
+  const err = document.getElementById('edit-event-error');
+  if (!title) { showErr(err, 'Skriv inn en tittel'); return; }
+  err.style.display = 'none';
+  const { error } = await sb.from('events').update({ title, location, date, start_time, end_time }).eq('id', id);
+  if (error) { showErr(err, 'Feil: ' + error.message); return; }
+  document.getElementById('edit-event-modal').classList.remove('open');
+  toast('Hendelse oppdatert!');
+  showPage(currentPage);
+}
+
+function deleteEventFromEdit() {
+  const id = document.getElementById('edit-ev-id').value;
+  document.getElementById('edit-event-modal').classList.remove('open');
+  deleteEvent(id);
+}
   const { error } = await sb.from('events').delete().eq('id', eventId);
   if (error) { toast('Feil: ' + error.message); return; }
   toast('Hendelse slettet');

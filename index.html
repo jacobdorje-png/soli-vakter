@@ -414,6 +414,15 @@ async function init() {
   localStorage.setItem('sb_key', key);
   sb = createClient(url, key);
 
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { showScreen('login'); return; }
+    currentUser = session.user;
+    await afterLogin();
+  } catch(e) {
+    showScreen('login');
+  }
+
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session) {
       currentUser = session.user;
@@ -423,11 +432,6 @@ async function init() {
       showScreen('login');
     }
   });
-
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { showScreen('login'); return; }
-  currentUser = session.user;
-  await afterLogin();
 }
 
 async function afterLogin() {

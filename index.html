@@ -452,6 +452,18 @@ create or replace trigger on_auth_user_created
   <div class="modal" style="max-width:360px;">
     <h3>Legg til hendelse</h3>
     <div class="field">
+      <label>Dato</label>
+      <input type="date" id="ev-date" />
+    </div>
+    <div class="field">
+      <label>Sted</label>
+      <select id="ev-location">
+        <option value="soli">Soli</option>
+        <option value="restaurant">Fredrikstad</option>
+        <option value="fredrikstad">Smia</option>
+      </select>
+    </div>
+    <div class="field">
       <label>Tittel</label>
       <input type="text" id="ev-title" placeholder="f.eks. Vernissage, Møte, Lukket..." onkeydown="if(event.key==='Enter')saveEvent()" />
     </div>
@@ -1322,10 +1334,13 @@ let pendingEventLoc = null, pendingEventDate = null;
 
 async function saveEvent() {
   const title = document.getElementById('ev-title').value.trim();
+  const location = document.getElementById('ev-location').value;
+  const date = document.getElementById('ev-date').value;
   const err = document.getElementById('event-modal-error');
   if (!title) { showErr(err, 'Skriv inn en tittel'); return; }
+  if (!date) { showErr(err, 'Velg dato'); return; }
   err.style.display = 'none';
-  const { error } = await sb.from('events').insert({ location: pendingEventLoc, date: pendingEventDate, title, created_by: currentProfile.id });
+  const { error } = await sb.from('events').insert({ location, date, title, created_by: currentProfile.id });
   if (error) { showErr(err, 'Feil: ' + error.message); return; }
   document.getElementById('event-modal').classList.remove('open');
   toast('Hendelse lagt til!');
@@ -1345,13 +1360,15 @@ function openDayModal(loc, date) {
 }
 
 function switchToEvent() {
-  pendingEventLoc = document.getElementById('m-location').value;
-  pendingEventDate = selectedDays.length > 0 ? selectedDays[0].date : fmtDate(new Date());
+  const loc = document.getElementById('m-location').value;
+  const date = selectedDays.length > 0 ? selectedDays[0].date : fmtDate(new Date());
   closeModal();
+  document.getElementById('ev-location').value = loc;
+  document.getElementById('ev-date').value = date;
   document.getElementById('ev-title').value = '';
   document.getElementById('event-modal-error').style.display = 'none';
   document.getElementById('event-modal').classList.add('open');
-  setTimeout(() => document.getElementById('ev-title').focus(), 100);
+  setTimeout(() => document.getElementById('ev-title').focus(), 150);
 }
 
 function chooseVakt() {
@@ -1361,11 +1378,12 @@ function chooseVakt() {
 
 function chooseHendelse() {
   document.getElementById('day-action-modal').classList.remove('open');
-  pendingEventLoc = pendingDayLoc; pendingEventDate = pendingDayDate;
+  document.getElementById('ev-location').value = pendingDayLoc || 'soli';
+  document.getElementById('ev-date').value = pendingDayDate || fmtDate(new Date());
   document.getElementById('ev-title').value = '';
   document.getElementById('event-modal-error').style.display = 'none';
   document.getElementById('event-modal').classList.add('open');
-  setTimeout(() => document.getElementById('ev-title').focus(), 100);
+  setTimeout(() => document.getElementById('ev-title').focus(), 150);
 }
 
 // ─── DELETE ──────────────────────────────────────────────────────────────────

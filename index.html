@@ -151,7 +151,14 @@ body{font-family:var(--font);font-weight:300;background:var(--cream);color:var(-
 .cal-person .cal-person-time{opacity:.8;font-size:9px;}
 .cal-add-hint{color:var(--ink-faint);font-size:10px;font-style:italic;margin-top:2px;}
 
-.cal-event{background:var(--gold-light);color:#7A5530;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:400;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:3px;}
+.day-btn{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--cream);font-size:12px;cursor:pointer;transition:all .15s;font-family:var(--font);color:var(--ink-muted);}
+.day-btn.selected{background:var(--gold);color:white;border-color:var(--gold);}
+.day-btn.today-btn{border-color:var(--gold);color:var(--gold);}
+.day-time-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--cream);border-radius:8px;margin-bottom:6px;font-size:13px;}
+.day-time-label{min-width:80px;font-weight:400;color:var(--ink-muted);}
+.day-time-row select{flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:12px;background:var(--warm-white);color:var(--ink);}
+
+background:var(--gold-light);color:#7A5530;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:400;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:3px;}
 .cal-event-title{flex:1;font-weight:500;}
 .name-tag{background:var(--sage-light);color:var(--sage);border-radius:20px;padding:4px 10px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:5px;}
 .name-tag .remove{cursor:pointer;opacity:.6;font-size:15px;line-height:1;}
@@ -400,11 +407,12 @@ create or replace trigger on_auth_user_created
 
 <!-- ADD SHIFT MODAL -->
 <div class="modal-backdrop" id="shift-modal">
-  <div class="modal">
+  <div class="modal" style="max-width:520px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
-      <h3 style="margin-bottom:0;" id="shift-modal-heading">Legg til vakt</h3>
+      <h3 style="margin-bottom:0;">Legg til vakt</h3>
       <button class="btn btn-outline btn-sm" onclick="switchToEvent()" style="font-size:12px;">+ Hendelse i stedet</button>
     </div>
+
     <div class="field">
       <label>Sted</label>
       <select id="m-location" onchange="updateModalTimes()">
@@ -413,20 +421,14 @@ create or replace trigger on_auth_user_created
         <option value="fredrikstad">Smia</option>
       </select>
     </div>
+
     <div class="field">
-      <label>Dato</label>
-      <input type="date" id="m-date" />
+      <label>Velg dager</label>
+      <div id="day-picker" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;"></div>
     </div>
-    <div style="display:flex;gap:10px;">
-      <div class="field" style="flex:1;">
-        <label>Fra</label>
-        <select id="m-start"></select>
-      </div>
-      <div class="field" style="flex:1;">
-        <label>Til</label>
-        <select id="m-end"></select>
-      </div>
-    </div>
+
+    <div id="day-times-list"></div>
+
     <div class="field">
       <label>Hvem jobber?</label>
       <div id="name-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:10px;"></div>
@@ -434,12 +436,13 @@ create or replace trigger on_auth_user_created
         <input type="text" id="m-name-input" placeholder="Skriv navn og trykk Enter..." style="flex:1;" onkeydown="handleNameKey(event)" oninput="showNameSuggestions()" autocomplete="off" />
         <button class="btn btn-outline btn-sm" onclick="addNameFromInput()">+</button>
       </div>
-      <div id="name-suggestions" style="background:var(--warm-white);border:1px solid var(--border);border-radius:8px;margin-top:4px;display:none;max-height:140px;overflow-y:auto;"></div>
+      <div id="name-suggestions" style="background:var(--warm-white);border:1px solid var(--border);border-radius:8px;margin-top:4px;display:none;max-height:120px;overflow-y:auto;"></div>
     </div>
+
     <div id="shift-modal-error" class="error-msg"></div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal()">Avbryt</button>
-      <button class="btn btn-gold" id="save-shift-btn" onclick="saveShift()">Lagre vakt</button>
+      <button class="btn btn-gold" id="save-shift-btn" onclick="saveShift()">Lagre vakter</button>
     </div>
   </div>
 </div>
@@ -718,45 +721,43 @@ async function saveShift() {
   err.style.display = 'none';
 
   try {
+    collectDayTimes();
     const location = document.getElementById('m-location').value;
-    const date = document.getElementById('m-date').value;
-    const start_time = document.getElementById('m-start').value;
-    const end_time = document.getElementById('m-end').value;
 
-    if (!date) { showErr(err, 'Velg dato'); return; }
-    if (!start_time) { showErr(err, 'Velg starttid'); return; }
-    if (!end_time) { showErr(err, 'Velg sluttid'); return; }
+    if (selectedDays.length === 0) { showErr(err, 'Velg minst én dag'); return; }
 
     btn.disabled = true; btn.textContent = 'Lagrer...';
 
     const names = modalNames.length > 0 ? modalNames : [{ name: currentProfile.name.split(' ')[0], userId: currentProfile.id }];
+    const role = names.map(n => n.name).join(', ');
+    const slots = names.length;
 
-    const { data: shiftData, error: shiftError } = await sb.from('shifts')
-      .insert({ location, date, start_time, end_time, role: names.map(n=>n.name).join(', '), slots: names.length })
-      .select().single();
+    // Create one shift per day
+    for (const day of selectedDays) {
+      const { data: shiftData, error: shiftError } = await sb.from('shifts')
+        .insert({ location, date: day.date, start_time: day.start, end_time: day.end, role, slots })
+        .select().single();
 
-    if (shiftError) throw new Error(shiftError.message);
+      if (shiftError) throw new Error(shiftError.message);
 
-    for (const n of names) {
-      let userId = n.userId;
-      if (!userId) {
-        const { data: found } = await sb.from('profiles').select('id').ilike('name', n.name + '%').limit(1);
-        userId = found?.[0]?.id || currentProfile.id;
+      for (const n of names) {
+        let userId = n.userId;
+        if (!userId) {
+          const { data: found } = await sb.from('profiles').select('id').ilike('name', n.name + '%').limit(1);
+          userId = found?.[0]?.id || currentProfile.id;
+        }
+        await sb.from('signups').insert({ shift_id: shiftData.id, user_id: userId, status: 'approved' });
+        saveName(n.name);
       }
-      const { error: signupError } = await sb.from('signups').insert({ shift_id: shiftData.id, user_id: userId, status: 'approved' });
-      if (signupError && !signupError.message.includes('duplicate')) {
-        console.warn('Signup error:', signupError.message);
-      }
-      saveName(n.name);
     }
 
-    btn.disabled = false; btn.textContent = 'Lagre vakt';
+    btn.disabled = false; btn.textContent = 'Lagre vakter';
     closeModal();
-    toast('Vakt lagret!');
+    toast(`${selectedDays.length > 1 ? selectedDays.length + ' vakter' : 'Vakt'} lagret!`);
     showPage(currentPage);
 
   } catch(e) {
-    btn.disabled = false; btn.textContent = 'Lagre vakt';
+    btn.disabled = false; btn.textContent = 'Lagre vakter';
     showErr(err, 'Feil: ' + e.message);
   }
 }
@@ -1113,7 +1114,9 @@ const LOC_TIMES = {
   fredrikstad: { start: '12:00', end: '18:00' }
 };
 
-// Generate time options every 30 min from 07:00 to 23:30
+// Generate time options every 30 min
+
+// Generate time options every 30 min
 function buildTimeOptions() {
   const opts = [];
   for (let h = 7; h <= 23; h++) {
@@ -1125,19 +1128,120 @@ function buildTimeOptions() {
   return opts;
 }
 
-function populateTimeSelects(startVal, endVal) {
+function makeTimeSelect(id, val) {
   const opts = buildTimeOptions();
-  ['m-start','m-end'].forEach((id, i) => {
-    const sel = document.getElementById(id);
-    const val = i === 0 ? startVal : endVal;
-    sel.innerHTML = opts.map(t => `<option value="${t}" ${t===val?'selected':''}>${t}</option>`).join('');
-  });
+  return `<select id="${id}" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:12px;background:var(--warm-white);color:var(--ink);">${opts.map(t=>`<option value="${t}" ${t===val?'selected':''}>${t}</option>`).join('')}</select>`;
+}
+
+// Selected days: [{date, start, end}]
+let selectedDays = [];
+
+function getDefaultTimes(loc) {
+  const LOC_TIMES = {
+    soli:        { start: '13:00', end: '18:00' },
+    restaurant:  { start: '12:00', end: '16:00' },
+    fredrikstad: { start: '12:00', end: '18:00' }
+  };
+  return LOC_TIMES[loc] || { start: '12:00', end: '18:00' };
 }
 
 function updateModalTimes() {
+  // When location changes, update default times for all selected days
   const loc = document.getElementById('m-location').value;
-  const times = LOC_TIMES[loc];
-  populateTimeSelects(times.start, times.end);
+  const { start, end } = getDefaultTimes(loc);
+  selectedDays.forEach(d => { d.start = start; d.end = end; });
+  renderDayPicker();
+}
+
+function renderDayPicker() {
+  const loc = document.getElementById('m-location').value;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const DAY_SHORT = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
+  const MON_SHORT = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+
+  // Show next 28 days as clickable buttons
+  const picker = document.getElementById('day-picker');
+  let html = '';
+  for (let i = 0; i < 28; i++) {
+    const d = addDays(today, i);
+    const ds = fmtDate(d);
+    const dayIdx = (d.getDay() + 6) % 7;
+    const isSelected = selectedDays.find(x => x.date === ds);
+    const isToday = i === 0;
+    html += `<button type="button" class="day-btn${isSelected?' selected':''}${isToday&&!isSelected?' today-btn':''}" onclick="toggleDay('${ds}','${loc}')">${DAY_SHORT[dayIdx]} ${d.getDate()}. ${MON_SHORT[d.getMonth()]}</button>`;
+  }
+  picker.innerHTML = html;
+
+  // Render per-day time rows
+  const list = document.getElementById('day-times-list');
+  if (selectedDays.length === 0) { list.innerHTML = ''; return; }
+  html = `<div style="margin-bottom:1rem;">`;
+  html += `<div style="font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Arbeidstider per dag</div>`;
+  selectedDays.forEach((d, i) => {
+    const dObj = new Date(d.date + 'T12:00:00');
+    const dayIdx = (dObj.getDay() + 6) % 7;
+    const label = `${DAY_SHORT[dayIdx]} ${dObj.getDate()}. ${MON_SHORT[dObj.getMonth()]}`;
+    html += `<div class="day-time-row">
+      <span class="day-time-label">${label}</span>
+      ${makeTimeSelect('dt-start-'+i, d.start)}
+      <span style="color:var(--ink-faint);font-size:12px;">–</span>
+      ${makeTimeSelect('dt-end-'+i, d.end)}
+    </div>`;
+  });
+  html += `</div>`;
+  list.innerHTML = html;
+}
+
+function toggleDay(date, loc) {
+  const idx = selectedDays.findIndex(x => x.date === date);
+  if (idx >= 0) {
+    selectedDays.splice(idx, 1);
+  } else {
+    const { start, end } = getDefaultTimes(loc);
+    selectedDays.push({ date, start, end });
+    selectedDays.sort((a,b) => a.date.localeCompare(b.date));
+  }
+  renderDayPicker();
+}
+
+function collectDayTimes() {
+  selectedDays.forEach((d, i) => {
+    const s = document.getElementById('dt-start-'+i);
+    const e = document.getElementById('dt-end-'+i);
+    if (s) d.start = s.value;
+    if (e) d.end = e.value;
+  });
+}
+
+async function openShiftModalForDay(loc, date) {
+  loadSavedNames();
+  modalNames = [{ name: currentProfile.name.split(' ')[0], userId: currentProfile.id }];
+  document.getElementById('m-location').value = loc;
+  const { start, end } = getDefaultTimes(loc);
+  selectedDays = [{ date, start, end }];
+  document.getElementById('shift-modal-error').style.display = 'none';
+  renderNameTags();
+  renderDayPicker();
+  document.getElementById('m-name-input').value = '';
+  document.getElementById('name-suggestions').style.display = 'none';
+  document.getElementById('shift-modal').classList.add('open');
+  seedNamesFromProfiles();
+}
+
+async function openShiftModal(loc) {
+  loadSavedNames();
+  modalNames = [{ name: currentProfile.name.split(' ')[0], userId: currentProfile.id }];
+  if (loc) document.getElementById('m-location').value = loc;
+  const locVal = document.getElementById('m-location').value;
+  const { start, end } = getDefaultTimes(locVal);
+  selectedDays = [{ date: fmtDate(new Date()), start, end }];
+  document.getElementById('shift-modal-error').style.display = 'none';
+  renderNameTags();
+  renderDayPicker();
+  document.getElementById('m-name-input').value = '';
+  document.getElementById('name-suggestions').style.display = 'none';
+  document.getElementById('shift-modal').classList.add('open');
+  seedNamesFromProfiles();
 }
 
 // ─── NAME TAGS ───────────────────────────────────────────────────────────────

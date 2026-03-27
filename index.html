@@ -943,7 +943,7 @@ async function renderForside(c) {
     // All-day events: show title prominently inside the colored cell
     allDayEvents.forEach(ev => {
       inner += `<div style="font-size:10px;font-weight:500;color:#7A3010;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:2px;">
-        <span onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6B3820;">${ev.title}</span>
+        <span onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;flex:1;color:#6B3820;word-break:break-word;">${ev.title}</span>
         <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:12px;flex-shrink:0;color:#6B3820;">×</span>
       </div>`;
     });

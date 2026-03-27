@@ -1013,6 +1013,11 @@ async function renderForside(c) {
       }));
     });
 
+    allPeople.sort((a, b) => {
+      if (a.isFerie !== b.isFerie) return a.isFerie ? 1 : -1;
+      return a.name.localeCompare(b.name, 'no');
+    });
+
     allPeople.forEach(p => {
       const firstName = p.name.split(' ')[0];
       const style = p.isFerie

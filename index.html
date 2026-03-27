@@ -4,32 +4,33 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Soli Brug — Vaktplan</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
   --cream: #F9F6F0; --warm-white: #FDFCFA; --ink: #1C1916; --ink-muted: #6B6460;
   --ink-faint: #B0ABA6; --gold: #A8865A; --gold-light: #F0E8DC; --gold-border: #D4B896;
   --sage: #4A7A5A; --sage-light: #E4EFE8; --red: #8B3A3A; --red-light: #F5EAEA;
   --border: #E8E2DA; --purple: #6B5A8A; --purple-light: #EDE8F5;
+  --font: 'proxima-nova', 'Nunito', sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;font-size:14px;}
+body{font-family:var(--font);font-weight:300;background:var(--cream);color:var(--ink);min-height:100vh;font-size:14px;}
 .screen{display:none;min-height:100vh;}
 .screen.active{display:flex;}
 
 /* SHARED */
 .center-wrap{flex-direction:column;align-items:center;justify-content:center;padding:2rem;}
-.logo{font-family:'Cormorant Garamond',serif;font-size:2.8rem;font-weight:400;letter-spacing:.04em;color:var(--ink);margin-bottom:.2rem;text-align:center;}
+.logo{font-family:var(--font);font-size:2.8rem;font-weight:400;letter-spacing:.04em;color:var(--ink);margin-bottom:.2rem;text-align:center;}
 .logo-sub{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:3rem;text-align:center;}
 .card{background:var(--warm-white);border:1px solid var(--border);border-radius:16px;padding:2.5rem;width:100%;max-width:420px;}
-.card h2{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:500;margin-bottom:.5rem;}
+.card h2{font-family:var(--font);font-size:1.5rem;font-weight:500;margin-bottom:.5rem;}
 .card>p{color:var(--ink-muted);margin-bottom:1.5rem;line-height:1.6;font-size:13px;}
 .field{margin-bottom:1rem;}
 .field label{display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:5px;}
-.field input,.field select,.field textarea{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--cream);color:var(--ink);outline:none;transition:border-color .2s;}
+.field input,.field select,.field textarea{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-family:var(--font);font-size:14px;background:var(--cream);color:var(--ink);outline:none;transition:border-color .2s;}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--gold);}
 .field textarea{resize:vertical;min-height:80px;}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:8px;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:8px;border:none;font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;}
 .btn:disabled{opacity:.45;cursor:not-allowed;}
 .btn-primary{background:var(--ink);color:white;width:100%;}
 .btn-primary:not(:disabled):hover{background:#2E2A26;}
@@ -50,7 +51,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 .setup-step{flex:1;height:3px;background:var(--border);border-radius:2px;transition:background .3s;}
 .setup-step.done{background:var(--gold);}
 .code-block{background:#1C1916;color:#F0E8DC;padding:1rem;border-radius:8px;font-family:monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;margin-bottom:.75rem;}
-.copy-btn{width:100%;padding:8px;background:var(--cream);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;transition:all .15s;}
+.copy-btn{width:100%;padding:8px;background:var(--cream);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font);transition:all .15s;}
 .copy-btn:hover{border-color:var(--gold);}
 .info-box{background:var(--gold-light);border:1px solid var(--gold-border);border-radius:10px;padding:1rem;font-size:13px;line-height:1.6;color:#6B4E2A;margin-top:1rem;}
 .info-box b{color:var(--gold);}
@@ -60,7 +61,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 
 /* TOPBAR */
 .topbar{background:var(--warm-white);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;}
-.topbar-logo{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:500;letter-spacing:.03em;}
+.topbar-logo{font-family:var(--font);font-size:1.4rem;font-weight:500;letter-spacing:.03em;}
 .topbar-right{display:flex;align-items:center;gap:10px;}
 .user-chip{background:var(--gold-light);color:var(--gold);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;}
 .admin-badge{background:var(--ink);color:white;padding:3px 8px;border-radius:4px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;}
@@ -80,7 +81,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 /* CONTENT */
 .content{flex:1;padding:2rem;overflow-y:auto;max-width:900px;}
 .page-header{margin-bottom:2rem;}
-.page-header h1{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:500;}
+.page-header h1{font-family:var(--font);font-size:2rem;font-weight:500;}
 .page-header p{color:var(--ink-muted);margin-top:4px;}
 .page-header-row{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem;}
 
@@ -96,7 +97,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 .today-marker{background:var(--gold);color:white;padding:1px 6px;border-radius:4px;font-size:10px;}
 .shift-card{background:var(--warm-white);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;transition:border-color .15s;}
 .shift-card:hover{border-color:var(--gold-border);}
-.shift-time{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:500;min-width:90px;padding-top:1px;}
+.shift-time{font-family:var(--font);font-size:1.1rem;font-weight:500;min-width:90px;padding-top:1px;}
 .shift-info{flex:1;}
 .shift-role-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;}
 .shift-role{font-size:13px;font-weight:500;}
@@ -113,7 +114,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 .today-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:2rem;}
 .today-card{background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:1.25rem;}
 .today-card h4{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.75rem;}
-.today-card .loc-name{font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:500;margin-bottom:.5rem;}
+.today-card .loc-name{font-family:var(--font);font-size:1.2rem;font-weight:500;margin-bottom:.5rem;}
 .worker-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;}
 .worker-row:last-child{border-bottom:none;}
 .avatar{width:28px;height:28px;border-radius:50%;background:var(--gold-light);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;}
@@ -134,7 +135,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 /* CALENDAR */
 .cal-wrap{margin-bottom:2.5rem;}
 .cal-loc-header{display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding-bottom:10px;border-bottom:2px solid var(--border);}
-.cal-loc-title{font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:500;}
+.cal-loc-title{font-family:var(--font);font-size:1.6rem;font-weight:500;}
 .cal-week-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:1.5rem 0 .5rem;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
 .cal-day{background:var(--warm-white);border:1px solid var(--border);border-radius:8px;padding:8px;min-height:90px;cursor:pointer;transition:border-color .15s,background .15s;}
@@ -143,13 +144,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 .cal-day.past{opacity:.5;cursor:default;}
 .cal-day.past:hover{border-color:var(--border);background:var(--warm-white);}
 .cal-day-name{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:2px;}
-.cal-day-num{font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:500;margin-bottom:6px;line-height:1;}
+.cal-day-num{font-family:var(--font);font-size:1.2rem;font-weight:500;margin-bottom:6px;line-height:1;}
 .cal-day.today .cal-day-num{color:var(--gold);}
 .cal-person{background:var(--sage-light);color:var(--sage);border-radius:4px;padding:3px 5px;font-size:10px;font-weight:500;margin-bottom:3px;line-height:1.3;}
 .cal-person .cal-person-name{font-weight:600;}
 .cal-person .cal-person-time{opacity:.8;font-size:9px;}
 .cal-add-hint{color:var(--ink-faint);font-size:10px;font-style:italic;margin-top:2px;}
 
+.cal-event{background:var(--gold-light);color:#7A5530;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:400;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:3px;}
+.cal-event-title{flex:1;font-weight:500;}
 .name-tag{background:var(--sage-light);color:var(--sage);border-radius:20px;padding:4px 10px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:5px;}
 .name-tag .remove{cursor:pointer;opacity:.6;font-size:15px;line-height:1;}
 .name-tag .remove:hover{opacity:1;}
@@ -166,7 +169,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);m
 .modal-backdrop{position:fixed;inset:0;background:rgba(28,25,22,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:1rem;}
 .modal-backdrop.open{display:flex;}
 .modal{background:var(--warm-white);border-radius:16px;padding:2rem;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;}
-.modal h3{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:500;margin-bottom:1.5rem;}
+.modal h3{font-family:var(--font);font-size:1.4rem;font-weight:500;margin-bottom:1.5rem;}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem;}
 
 /* TOAST */
@@ -257,12 +260,25 @@ create policy "admin_update_profiles" on public.profiles for update to authentic
 
 create policy "read_shifts" on public.shifts for select to authenticated using (true);
 create policy "insert_shifts" on public.shifts for insert to authenticated with check (true);
-create policy "admin_delete_shifts" on public.shifts for delete to authenticated using ((select is_admin from public.profiles where id = auth.uid()));
+create policy "delete_shifts" on public.shifts for delete to authenticated using (true);
 
 create policy "read_signups" on public.signups for select to authenticated using (true);
 create policy "insert_own_signup" on public.signups for insert to authenticated with check (true);
-create policy "delete_own_signup" on public.signups for delete to authenticated using (auth.uid() = user_id or (select is_admin from public.profiles where id = auth.uid()));
+create policy "delete_own_signup" on public.signups for delete to authenticated using (true);
 create policy "admin_update_signups" on public.signups for update to authenticated using ((select is_admin from public.profiles where id = auth.uid()));
+
+create table public.events (
+  id uuid default gen_random_uuid() primary key,
+  location text not null,
+  date date not null,
+  title text not null,
+  created_by uuid references public.profiles on delete set null,
+  created_at timestamptz default now()
+);
+alter table public.events enable row level security;
+create policy "read_events" on public.events for select to authenticated using (true);
+create policy "insert_events" on public.events for insert to authenticated with check (true);
+create policy "delete_events" on public.events for delete to authenticated using (true);
 
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -421,6 +437,36 @@ create or replace trigger on_auth_user_created
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal()">Avbryt</button>
       <button class="btn btn-gold" id="save-shift-btn" onclick="saveShift()">Lagre vakt</button>
+    </div>
+  </div>
+</div>
+
+<!-- EVENT MODAL -->
+<div class="modal-backdrop" id="event-modal">
+  <div class="modal" style="max-width:360px;">
+    <h3>Legg til hendelse</h3>
+    <div class="field">
+      <label>Tittel</label>
+      <input type="text" id="ev-title" placeholder="f.eks. Vernissage, Møte, Lukket..." onkeydown="if(event.key==='Enter')saveEvent()" />
+    </div>
+    <div id="event-modal-error" class="error-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('event-modal').classList.remove('open')">Avbryt</button>
+      <button class="btn btn-gold" onclick="saveEvent()">Lagre</button>
+    </div>
+  </div>
+</div>
+
+<!-- DAY ACTION MODAL -->
+<div class="modal-backdrop" id="day-action-modal">
+  <div class="modal" style="max-width:320px;">
+    <h3 id="day-action-title">Hva vil du legge til?</h3>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:0.5rem;">
+      <button class="btn btn-gold" style="width:100%;justify-content:flex-start;gap:10px;" onclick="chooseVakt()">🗓 Legg til vakt</button>
+      <button class="btn btn-outline" style="width:100%;justify-content:flex-start;gap:10px;" onclick="chooseHendelse()">📌 Legg til hendelse</button>
+    </div>
+    <div class="modal-actions" style="margin-top:1rem;">
+      <button class="btn btn-outline" onclick="document.getElementById('day-action-modal').classList.remove('open')">Avbryt</button>
     </div>
   </div>
 </div>
@@ -770,19 +816,21 @@ async function renderToday(c) {
 }
 
 async function renderForside(c) {
-  // Start from most recent Monday
   const today = new Date();
   today.setHours(0,0,0,0);
-  const dayOfWeek = today.getDay(); // 0=Sun
+  const dayOfWeek = today.getDay();
   const daysFromMon = (dayOfWeek + 6) % 7;
   const monday = addDays(today, -daysFromMon);
-  const end = addDays(monday, 27); // 4 weeks
+  const end = addDays(monday, 27);
   const todayStr = fmtDate(today);
 
-  const shifts = await fetchShifts(null, fmtDate(monday), fmtDate(end));
+  const [shifts, events] = await Promise.all([
+    fetchShifts(null, fmtDate(monday), fmtDate(end)),
+    fetchEvents(fmtDate(monday), fmtDate(end))
+  ]);
+
   const DAY_SHORT = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
 
-  // Build 4 weeks
   const weeks = Array.from({length:4}, (_,w) =>
     Array.from({length:7}, (_,d) => addDays(monday, w*7+d))
   );
@@ -792,39 +840,46 @@ async function renderForside(c) {
     const isToday = ds === todayStr;
     const isPast = ds < todayStr;
     const dayShifts = shifts.filter(s => s.location === locKey && s.date === ds);
+    const dayEvents = events.filter(e => e.location === locKey && e.date === ds);
     const dayOfWeekIdx = (d.getDay() + 6) % 7;
 
     let cls = 'cal-day';
     if (isToday) cls += ' today';
     if (isPast) cls += ' past';
 
-    const clickHandler = isPast ? '' : `onclick="openShiftModalForDay('${locKey}','${ds}')"`;
+    const clickHandler = isPast ? '' : `onclick="openDayModal('${locKey}','${ds}')"`;
 
     let inner = `<div class="cal-day-name">${DAY_SHORT[dayOfWeekIdx]}</div>`;
     inner += `<div class="cal-day-num">${d.getDate()}.</div>`;
 
-    // All approved signups across all shifts on this day/location, stacked
+    // Events first (at top)
+    dayEvents.forEach(ev => {
+      inner += `<div class="cal-event">
+        <span class="cal-event-title">${ev.title}</span>
+        <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:13px;" title="Slett">×</span>
+      </div>`;
+    });
+
+    // Then people
     const allPeople = dayShifts.flatMap(s =>
       (s.signups||[])
         .filter(sg => sg.status === 'approved')
-        .map(sg => ({ name: sg.profiles?.name || '?', start: s.start_time, end: s.end_time, shiftId: s.id, userId: sg.user_id }))
+        .map(sg => ({ name: sg.profiles?.name || s.role || '?', start: s.start_time, end: s.end_time, shiftId: s.id, userId: sg.user_id }))
     );
 
-    if (allPeople.length > 0) {
-      allPeople.forEach(p => {
-        const firstName = p.name.split(' ')[0];
-        const isMe = p.userId === currentProfile.id;
-        inner += `<div class="cal-person" style="${isMe ? 'background:#C8E6D4;color:#2E7D4F;' : ''}">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
-            <div>
-              <div class="cal-person-name">${firstName}</div>
-              <div class="cal-person-time">${p.start.substring(0,5)}–${p.end.substring(0,5)}</div>
-            </div>
-            <span onclick="event.stopPropagation();promptDelete('${p.shiftId}')" style="cursor:pointer;opacity:.5;font-size:13px;padding:0 2px;" title="Slett">×</span>
+    allPeople.forEach(p => {
+      const firstName = p.name.split(' ')[0];
+      const isMe = p.userId === currentProfile.id;
+      inner += `<div class="cal-person" style="${isMe ? 'background:#C8E6D4;color:#2E7D4F;' : ''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
+          <div>
+            <div class="cal-person-name">${firstName}</div>
+            <div class="cal-person-time">${p.start.substring(0,5)}–${p.end.substring(0,5)}</div>
           </div>
-        </div>`;
-      });
-    }
+          <span onclick="event.stopPropagation();promptDelete('${p.shiftId}')" style="cursor:pointer;opacity:.4;font-size:13px;padding:0 2px;" title="Slett">×</span>
+        </div>
+      </div>`;
+    });
 
     if (!isPast) inner += `<div class="cal-add-hint">+ legg til</div>`;
 
@@ -835,7 +890,7 @@ async function renderForside(c) {
     return `<div class="cal-grid">${week.map(d => calDay(d, locKey)).join('')}</div>`;
   }
 
-  let html = `<div class="page-header" style="margin-bottom:1.5rem;"><h1>Ukeoversikt</h1><p>Fire uker — trykk på en dag for å legge til vakt</p></div>`;
+  let html = `<div class="page-header" style="margin-bottom:1.5rem;"><h1>Ukeoversikt</h1><p>Fire uker — trykk på en dag for å legge til</p></div>`;
 
   for (const [key, loc] of Object.entries(LOCS)) {
     html += `<div class="cal-wrap">
@@ -1110,6 +1165,60 @@ function pickSuggestion(name) {
 async function seedNamesFromProfiles() {
   const profiles = await fetchAllProfiles();
   profiles.forEach(p => { if (p.name) saveName(p.name.split(' ')[0]); });
+}
+
+// ─── EVENTS ──────────────────────────────────────────────────────────────────
+async function fetchEvents(startDate, endDate) {
+  const { data, error } = await sb.from('events').select('*').gte('date', startDate).lte('date', endDate).order('created_at');
+  if (error) return [];
+  return data || [];
+}
+
+let pendingEventLoc = null, pendingEventDate = null;
+
+async function saveEvent() {
+  const title = document.getElementById('ev-title').value.trim();
+  const err = document.getElementById('event-modal-error');
+  if (!title) { showErr(err, 'Skriv inn en tittel'); return; }
+  err.style.display = 'none';
+  const { error } = await sb.from('events').insert({ location: pendingEventLoc, date: pendingEventDate, title, created_by: currentProfile.id });
+  if (error) { showErr(err, 'Feil: ' + error.message); return; }
+  document.getElementById('event-modal').classList.remove('open');
+  toast('Hendelse lagt til!');
+  showPage(currentPage);
+}
+
+async function deleteEvent(eventId) {
+  const { error } = await sb.from('events').delete().eq('id', eventId);
+  if (error) { toast('Feil: ' + error.message); return; }
+  toast('Hendelse slettet');
+  showPage(currentPage);
+}
+
+// Day action flow
+let pendingDayLoc = null, pendingDayDate = null;
+
+function openDayModal(loc, date) {
+  pendingDayLoc = loc; pendingDayDate = date;
+  const d = new Date(date + 'T12:00:00');
+  const DAY_NO = ['Søndag','Mandag','Tirsdag','Onsdag','Torsdag','Fredag','Lørdag'];
+  const MON_NO = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+  document.getElementById('day-action-title').textContent = `${DAY_NO[d.getDay()]} ${d.getDate()}. ${MON_NO[d.getMonth()]}`;
+  document.getElementById('day-action-modal').classList.add('open');
+}
+
+function chooseVakt() {
+  document.getElementById('day-action-modal').classList.remove('open');
+  openShiftModalForDay(pendingDayLoc, pendingDayDate);
+}
+
+function chooseHendelse() {
+  document.getElementById('day-action-modal').classList.remove('open');
+  pendingEventLoc = pendingDayLoc; pendingEventDate = pendingDayDate;
+  document.getElementById('ev-title').value = '';
+  document.getElementById('event-modal-error').style.display = 'none';
+  document.getElementById('event-modal').classList.add('open');
+  setTimeout(() => document.getElementById('ev-title').focus(), 100);
 }
 
 // ─── DELETE ──────────────────────────────────────────────────────────────────

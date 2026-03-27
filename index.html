@@ -1444,6 +1444,8 @@ function deleteEventFromEdit() {
   document.getElementById('edit-event-modal').classList.remove('open');
   deleteEvent(id);
 }
+
+async function deleteEvent(eventId) {
   const { error } = await sb.from('events').delete().eq('id', eventId);
   if (error) { toast('Feil: ' + error.message); return; }
   toast('Hendelse slettet');

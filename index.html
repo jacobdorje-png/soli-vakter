@@ -158,7 +158,11 @@ body{font-family:var(--font);font-weight:300;background:var(--cream);color:var(-
 .day-time-label{min-width:80px;font-weight:400;color:var(--ink-muted);}
 .day-time-row select{flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:12px;background:var(--warm-white);color:var(--ink);}
 
-.cal-event{background:#FDE8D8;color:#A84A10;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:3px;}
+.cal-day.all-day-event{background:#F2D4C2;border-color:#D4946A;}
+.cal-day.all-day-event:hover{background:#ECC8B0;border-color:#C47850;}
+.cal-day.today.all-day-event{background:#ECC0A0;border-color:var(--gold);}
+.cal-day.past.all-day-event{background:#F2D4C2;}
+color:#A84A10;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:3px;}
 .cal-event-title{flex:1;font-weight:500;}
 .name-tag{background:var(--sage-light);color:var(--sage);border-radius:20px;padding:4px 10px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:5px;}
 .name-tag .remove{cursor:pointer;opacity:.6;font-size:15px;line-height:1;}
@@ -878,6 +882,13 @@ async function renderToday(c) {
   c.innerHTML = html;
 }
 
+function toggleFullYear(key) {
+  showFullYear[key] = !showFullYear[key];
+  const c = document.getElementById('main-content');
+  c.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><span>Laster kalender...</span></div>';
+  setTimeout(() => showPage('forside'), 50);
+}
+
 const showFullYear = { soli: false, restaurant: false, fredrikstad: false };
 
 async function renderForside(c) {
@@ -913,18 +924,35 @@ async function renderForside(c) {
     const dayEvents = events.filter(e => e.location === locKey && e.date === ds);
     const dayOfWeekIdx = (d.getDay() + 6) % 7;
 
+    const allDayEvents = dayEvents.filter(e => !e.start_time);
+    const timedEvents = dayEvents.filter(e => e.start_time);
+
+    // If there's an all-day event, the whole cell gets an orange background
+    const hasAllDay = allDayEvents.length > 0;
+
     let cls = 'cal-day';
     if (isToday) cls += ' today';
     if (isPast) cls += ' past';
+    if (hasAllDay) cls += ' all-day-event';
+
     const clickHandler = isPast ? '' : `onclick="openDayModal('${locKey}','${ds}')"`;
 
-    let inner = `<div class="cal-day-name">${DAY_SHORT[dayOfWeekIdx]}</div>`;
-    inner += `<div class="cal-day-num">${d.getDate()}.</div>`;
+    let inner = `<div class="cal-day-name" style="${hasAllDay?'opacity:.7;':''}">${DAY_SHORT[dayOfWeekIdx]}</div>`;
+    inner += `<div class="cal-day-num" style="${hasAllDay?'opacity:.7;':''}">${d.getDate()}.</div>`;
 
-    dayEvents.forEach(ev => {
-      const timeStr = ev.start_time ? ` · ${ev.start_time.substring(0,5)}${ev.end_time ? '–'+ev.end_time.substring(0,5) : ''}` : '';
+    // All-day events: show title prominently inside the colored cell
+    allDayEvents.forEach(ev => {
+      inner += `<div style="font-size:10px;font-weight:500;color:#7A3010;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:2px;">
+        <span onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6B3820;">${ev.title}</span>
+        <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:12px;flex-shrink:0;color:#6B3820;">×</span>
+      </div>`;
+    });
+
+    // Timed events: still show as pills
+    timedEvents.forEach(ev => {
+      const timeStr = `${ev.start_time.substring(0,5)}${ev.end_time ? '–'+ev.end_time.substring(0,5) : ''}`;
       inner += `<div class="cal-event">
-        <span class="cal-event-title" onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;">${ev.title}${timeStr}</span>
+        <span class="cal-event-title" onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;">${ev.title} · ${timeStr}</span>
         <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:13px;" title="Slett">×</span>
       </div>`;
     });
@@ -984,7 +1012,7 @@ async function renderForside(c) {
     if (!showFullYear[key]) {
       // Toggle button
       html += `<div style="text-align:center;margin:1.25rem 0 0.5rem;">
-        <button class="btn btn-outline btn-sm" onclick="showFullYear['${key}']=true;showPage('forside')">
+        <button class="btn btn-outline btn-sm" onclick="toggleFullYear('${key}')">
           Vis resten av ${today.getFullYear()} ↓
         </button>
       </div>`;
@@ -993,7 +1021,7 @@ async function renderForside(c) {
       html += `<div style="border-top:1px solid var(--border);margin-top:1.5rem;padding-top:0.5rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
           <span style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);">Resten av ${today.getFullYear()}</span>
-          <button class="btn btn-outline btn-sm" onclick="showFullYear['${key}']=false;showPage('forside')">Skjul</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleFullYear('${key}')">Skjul</button>
         </div>`;
 
       let lastMonth = -1;

@@ -815,25 +815,27 @@ async function renderToday(c) {
   c.innerHTML = html;
 }
 
+let showFullYear = false;
+
 async function renderForside(c) {
   const today = new Date();
   today.setHours(0,0,0,0);
   const dayOfWeek = today.getDay();
   const daysFromMon = (dayOfWeek + 6) % 7;
   const monday = addDays(today, -daysFromMon);
-  const end = addDays(monday, 27);
   const todayStr = fmtDate(today);
+  const fourWeeksEnd = addDays(monday, 27);
+  const yearEnd = new Date(today.getFullYear(), 11, 31);
+
+  const fetchEnd = showFullYear ? yearEnd : fourWeeksEnd;
 
   const [shifts, events] = await Promise.all([
-    fetchShifts(null, fmtDate(monday), fmtDate(end)),
-    fetchEvents(fmtDate(monday), fmtDate(end))
+    fetchShifts(null, fmtDate(monday), fmtDate(fetchEnd)),
+    fetchEvents(fmtDate(monday), fmtDate(fetchEnd))
   ]);
 
   const DAY_SHORT = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
-
-  const weeks = Array.from({length:4}, (_,w) =>
-    Array.from({length:7}, (_,d) => addDays(monday, w*7+d))
-  );
+  const MON_NO = ['januar','februar','mars','april','mai','juni','juli','august','september','oktober','november','desember'];
 
   function calDay(d, locKey) {
     const ds = fmtDate(d);
@@ -846,13 +848,11 @@ async function renderForside(c) {
     let cls = 'cal-day';
     if (isToday) cls += ' today';
     if (isPast) cls += ' past';
-
     const clickHandler = isPast ? '' : `onclick="openDayModal('${locKey}','${ds}')"`;
 
     let inner = `<div class="cal-day-name">${DAY_SHORT[dayOfWeekIdx]}</div>`;
     inner += `<div class="cal-day-num">${d.getDate()}.</div>`;
 
-    // Events first (at top)
     dayEvents.forEach(ev => {
       inner += `<div class="cal-event">
         <span class="cal-event-title">${ev.title}</span>
@@ -860,10 +860,8 @@ async function renderForside(c) {
       </div>`;
     });
 
-    // Then people
     const allPeople = dayShifts.flatMap(s =>
-      (s.signups||[])
-        .filter(sg => sg.status === 'approved')
+      (s.signups||[]).filter(sg => sg.status === 'approved')
         .map(sg => ({ name: sg.profiles?.name || s.role || '?', start: s.start_time, end: s.end_time, shiftId: s.id, userId: sg.user_id }))
     );
 
@@ -882,7 +880,6 @@ async function renderForside(c) {
     });
 
     if (!isPast) inner += `<div class="cal-add-hint">+ legg til</div>`;
-
     return `<div class="${cls}" ${clickHandler}>${inner}</div>`;
   }
 
@@ -890,17 +887,65 @@ async function renderForside(c) {
     return `<div class="cal-grid">${week.map(d => calDay(d, locKey)).join('')}</div>`;
   }
 
-  let html = `<div class="page-header" style="margin-bottom:1.5rem;"><h1>Ukeoversikt</h1><p>Fire uker — trykk på en dag for å legge til</p></div>`;
-
-  for (const [key, loc] of Object.entries(LOCS)) {
-    html += `<div class="cal-wrap">
+  function renderLocBlock(key, loc, weeks, monthLabels) {
+    let html = `<div class="cal-wrap">
       <div class="cal-loc-header">
         <span style="width:10px;height:10px;border-radius:50%;background:${loc.color};display:inline-block;flex-shrink:0;"></span>
         <span class="cal-loc-title">${loc.name}</span>
       </div>`;
-    weeks.forEach(week => {
-      html += `<div class="cal-week-label">Uke ${getWeekNumber(week[0])}</div>${renderWeek(week, key)}`;
+    weeks.forEach((week, i) => {
+      if (monthLabels) {
+        const mid = week[3];
+        if (i === 0 || mid.getMonth() !== weeks[i-1][3].getMonth()) {
+          html += `<div class="cal-week-label" style="font-size:13px;font-weight:400;color:var(--ink-muted);margin-top:1.25rem;">${MON_NO[mid.getMonth()]} ${mid.getFullYear()}</div>`;
+        }
+      } else {
+        html += `<div class="cal-week-label">Uke ${getWeekNumber(week[0])}</div>`;
+      }
+      html += renderWeek(week, key);
     });
+    html += `</div>`;
+    return html;
+  }
+
+  // 4 weeks
+  const fourWeeks = Array.from({length:4}, (_,w) =>
+    Array.from({length:7}, (_,d) => addDays(monday, w*7+d))
+  );
+
+  // Rest of year (after 4 weeks)
+  let restWeeks = [];
+  if (showFullYear) {
+    const restStart = addDays(fourWeeksEnd, 1);
+    const totalRestDays = Math.ceil((yearEnd - restStart) / 86400000) + 1;
+    const totalRestWeeks = Math.ceil(totalRestDays / 7);
+    restWeeks = Array.from({length: totalRestWeeks}, (_,w) =>
+      Array.from({length:7}, (_,d) => addDays(restStart, w*7+d))
+    ).filter(week => week[0] <= yearEnd);
+  }
+
+  let html = `<div class="page-header" style="margin-bottom:1.5rem;"><h1>Ukeoversikt</h1><p>Trykk på en dag for å legge til</p></div>`;
+
+  for (const [key, loc] of Object.entries(LOCS)) {
+    html += renderLocBlock(key, loc, fourWeeks, false);
+  }
+
+  // Toggle button between sections
+  if (!showFullYear) {
+    html += `<div style="text-align:center;margin:2rem 0;">
+      <button class="btn btn-outline" onclick="showFullYear=true;showPage('forside')" style="padding:10px 28px;">
+        Vis resten av ${today.getFullYear()} ↓
+      </button>
+    </div>`;
+  } else {
+    html += `<div style="border-top:1px solid var(--border);margin:2rem 0 1.5rem;padding-top:1.5rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+        <h2 style="font-size:1.4rem;font-weight:300;">Resten av ${today.getFullYear()}</h2>
+        <button class="btn btn-outline btn-sm" onclick="showFullYear=false;showPage('forside')">Skjul</button>
+      </div>`;
+    for (const [key, loc] of Object.entries(LOCS)) {
+      html += renderLocBlock(key, loc, restWeeks, true);
+    }
     html += `</div>`;
   }
 

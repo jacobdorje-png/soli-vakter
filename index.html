@@ -1556,7 +1556,12 @@ const MONTHS_SHORT = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt
 
 function norDay(d) { return `${DAYS_NO[d.getDay()]} ${d.getDate()}. ${MONTHS_NO[d.getMonth()]}`; }
 function norDayShort(d) { return `${DAYS_NO[d.getDay()].substring(0,3)} ${d.getDate()}. ${MONTHS_SHORT[d.getMonth()]}`; }
-function fmtDate(d) { return d.toISOString().split('T')[0]; }
+function fmtDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
 
 function getWeek() {

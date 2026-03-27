@@ -467,6 +467,18 @@ create or replace trigger on_auth_user_created
       <label>Tittel</label>
       <input type="text" id="ev-title" placeholder="f.eks. Vernissage, Møte, Lukket..." onkeydown="if(event.key==='Enter')saveEvent()" />
     </div>
+    <div class="field">
+      <label>Tidspunkt <span style="color:var(--ink-faint);font-weight:300;">(valgfritt)</span></label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="ev-start" style="flex:1;">
+          <option value="">Hele dagen</option>
+        </select>
+        <span style="color:var(--ink-faint);font-size:12px;">–</span>
+        <select id="ev-end" style="flex:1;">
+          <option value="">–</option>
+        </select>
+      </div>
+    </div>
     <div id="event-modal-error" class="error-msg"></div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="document.getElementById('event-modal').classList.remove('open')">Avbryt</button>
@@ -869,8 +881,9 @@ async function renderForside(c) {
     inner += `<div class="cal-day-num">${d.getDate()}.</div>`;
 
     dayEvents.forEach(ev => {
+      const timeStr = ev.start_time ? ` · ${ev.start_time.substring(0,5)}${ev.end_time ? '–'+ev.end_time.substring(0,5) : ''}` : '';
       inner += `<div class="cal-event">
-        <span class="cal-event-title">${ev.title}</span>
+        <span class="cal-event-title">${ev.title}${timeStr}</span>
         <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:13px;" title="Slett">×</span>
       </div>`;
     });
@@ -1336,11 +1349,13 @@ async function saveEvent() {
   const title = document.getElementById('ev-title').value.trim();
   const location = document.getElementById('ev-location').value;
   const date = document.getElementById('ev-date').value;
+  const start_time = document.getElementById('ev-start').value || null;
+  const end_time = document.getElementById('ev-end').value || null;
   const err = document.getElementById('event-modal-error');
   if (!title) { showErr(err, 'Skriv inn en tittel'); return; }
   if (!date) { showErr(err, 'Velg dato'); return; }
   err.style.display = 'none';
-  const { error } = await sb.from('events').insert({ location, date, title, created_by: currentProfile.id });
+  const { error } = await sb.from('events').insert({ location, date, title, start_time, end_time, created_by: currentProfile.id });
   if (error) { showErr(err, 'Feil: ' + error.message); return; }
   document.getElementById('event-modal').classList.remove('open');
   toast('Hendelse lagt til!');
@@ -1359,6 +1374,15 @@ function openDayModal(loc, date) {
   openShiftModalForDay(loc, date);
 }
 
+function populateEventTimes() {
+  const opts = buildTimeOptions();
+  const startSel = document.getElementById('ev-start');
+  const endSel = document.getElementById('ev-end');
+  const timeOpts = opts.map(t => `<option value="${t}">${t}</option>`).join('');
+  startSel.innerHTML = `<option value="">Hele dagen</option>` + timeOpts;
+  endSel.innerHTML = `<option value="">–</option>` + timeOpts;
+}
+
 function switchToEvent() {
   const loc = document.getElementById('m-location').value;
   const date = selectedDays.length > 0 ? selectedDays[0].date : fmtDate(new Date());
@@ -1367,6 +1391,7 @@ function switchToEvent() {
   document.getElementById('ev-date').value = date;
   document.getElementById('ev-title').value = '';
   document.getElementById('event-modal-error').style.display = 'none';
+  populateEventTimes();
   document.getElementById('event-modal').classList.add('open');
   setTimeout(() => document.getElementById('ev-title').focus(), 150);
 }
@@ -1382,6 +1407,7 @@ function chooseHendelse() {
   document.getElementById('ev-date').value = pendingDayDate || fmtDate(new Date());
   document.getElementById('ev-title').value = '';
   document.getElementById('event-modal-error').style.display = 'none';
+  populateEventTimes();
   document.getElementById('event-modal').classList.add('open');
   setTimeout(() => document.getElementById('ev-title').focus(), 150);
 }

@@ -699,40 +699,40 @@ async function renderForside(c) {
   const start = new Date();
   const end = addDays(start, 13);
   const shifts = await fetchShifts(null, fmtDate(start), fmtDate(end));
-
-  let html = `<div class="page-header"><h1>Ukeoversikt</h1><p>Alle steder — neste to uker</p></div>`;
-
   const days = Array.from({length: 14}, (_, i) => addDays(start, i));
 
-  days.forEach(d => {
-    const ds = fmtDate(d);
-    const dayShifts = shifts.filter(s => s.date === ds);
-    const isToday = ds === fmtDate(new Date());
-    if (!dayShifts.length && !isToday) return;
+  let html = `<div class="page-header-row"><div class="page-header" style="margin-bottom:0;"><h1>Ukeoversikt</h1><p>Alle steder — neste to uker</p></div>`;
+  if (currentProfile.is_admin) html += `<button class="btn btn-gold" onclick="openShiftModal()">+ Legg til vakt</button>`;
+  html += `</div>`;
 
-    html += `<div class="day-section"><div class="day-header">${norDay(d)}${isToday ? '<span class="today-marker">I dag</span>' : ''}</div>`;
+  for (const [key, loc] of Object.entries(LOCS)) {
+    const locShifts = shifts.filter(s => s.location === key);
 
-    if (!dayShifts.length) {
-      html += `<div class="empty-msg" style="padding:6px 0 10px;">Ingen vakter planlagt</div>`;
-    } else {
-      // Group by location
-      for (const [key, loc] of Object.entries(LOCS)) {
-        const locShifts = dayShifts.filter(s => s.location === key);
-        if (!locShifts.length) continue;
-        html += `<div style="margin-bottom:8px;">
-          <div style="font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:${loc.color};margin-bottom:4px;display:flex;align-items:center;gap:6px;">
-            <span style="width:6px;height:6px;border-radius:50%;background:${loc.color};display:inline-block;"></span>${loc.name}
-          </div>`;
-        locShifts.forEach(s => { html += shiftCard(s, false); });
-        html += `</div>`;
-      }
+    html += `<div style="margin-top:2.5rem;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding-bottom:10px;border-bottom:2px solid ${loc.color};">
+        <span style="width:10px;height:10px;border-radius:50%;background:${loc.color};display:inline-block;flex-shrink:0;"></span>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:500;color:var(--ink);">${loc.name}</h2>
+      </div>`;
+
+    let hadAny = false;
+    days.forEach(d => {
+      const ds = fmtDate(d);
+      const dayShifts = locShifts.filter(s => s.date === ds);
+      const isToday = ds === fmtDate(new Date());
+      if (!dayShifts.length) return;
+      hadAny = true;
+      html += `<div class="day-section"><div class="day-header">${norDay(d)}${isToday ? '<span class="today-marker">I dag</span>' : ''}</div>`;
+      dayShifts.forEach(s => { html += shiftCard(s, false); });
+      html += `</div>`;
+    });
+
+    if (!hadAny) {
+      html += `<div class="empty-msg" style="padding:8px 0;">Ingen vakter planlagt de neste 2 ukene</div>`;
     }
-    html += `</div>`;
-  });
 
-  if (currentProfile.is_admin) {
-    html += `<button class="btn btn-gold" onclick="openShiftModal()" style="margin-top:1rem;">+ Legg til vakt</button>`;
+    html += `</div>`;
   }
+
   c.innerHTML = html;
 }
 

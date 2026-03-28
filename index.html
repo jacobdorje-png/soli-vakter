@@ -166,8 +166,9 @@ color:#A84A10;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:500;m
 .cal-event-title{flex:1;font-weight:500;}
 .type-btn{padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--cream);font-size:13px;cursor:pointer;font-family:var(--font);color:var(--ink-muted);transition:all .15s;}
 .type-btn.active{background:var(--ink);color:white;border-color:var(--ink);}
-.type-btn:first-child.active{background:var(--sage);border-color:var(--sage);}
-.type-btn:last-child.active{background:var(--red);border-color:var(--red);color:white;}
+#type-jobb.active{background:var(--sage);border-color:var(--sage);color:white;}
+#type-ferie.active{background:var(--red);border-color:var(--red);color:white;}
+#type-opptatt.active{background:#6B5A8A;border-color:#6B5A8A;color:white;}
 border-radius:20px;border:1px solid var(--border);background:var(--cream);font-size:12px;cursor:pointer;transition:all .15s;font-family:var(--font);color:var(--ink-muted);}
 .name-chip-btn:hover{border-color:var(--gold);color:var(--ink);}
 .name-chip-btn.selected{background:var(--sage-light);color:var(--sage);border-color:#A8C8B4;font-weight:500;}
@@ -471,10 +472,16 @@ create or replace trigger on_auth_user_created
 
     <div class="field">
       <label>Type</label>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button type="button" id="type-jobb" class="type-btn active" onclick="setShiftType('jobb')">Jobb</button>
         <button type="button" id="type-ferie" class="type-btn" onclick="setShiftType('ferie')">🏖 Ferie</button>
+        <button type="button" id="type-opptatt" class="type-btn" onclick="setShiftType('opptatt')">Opptatt</button>
       </div>
+    </div>
+
+    <div class="field" id="opptatt-desc-field" style="display:none;">
+      <label>Beskrivelse <span style="color:var(--ink-faint);font-weight:300;">(valgfritt)</span></label>
+      <input type="text" id="m-opptatt-desc" placeholder="f.eks. Tannlege, Møte, Kurs..." />
     </div>
 
     <div id="shift-modal-error" class="error-msg"></div>
@@ -853,9 +860,13 @@ async function saveShift() {
 
     const names = modalNames;
     const isFerie = currentShiftType === 'ferie';
+    const isOpptatt = currentShiftType === 'opptatt';
+    const desc = isOpptatt ? (document.getElementById('m-opptatt-desc').value.trim() || '') : '';
     const role = isFerie
       ? names.map(n => `${n.name}:ferie`).join(', ')
-      : names.map(n => n.name).join(', ');
+      : isOpptatt
+        ? names.map(n => `${n.name}:opptatt${desc ? ':'+desc : ''}`).join(', ')
+        : names.map(n => n.name).join(', ');
     const slots = names.length;
 
     // Create one shift per day
@@ -1029,14 +1040,18 @@ async function renderForside(c) {
       const roleNames = (s.role || '').split(',').map(n => n.trim()).filter(Boolean);
       if (roleNames.length > 0 && roleNames[0] !== 'Vakt') {
         return roleNames.map(entry => {
-          const isFerie = entry.endsWith(':ferie');
-          const name = isFerie ? entry.slice(0, -6) : entry;
+          const parts = entry.split(':');
+          const name = parts[0];
+          const tag = parts[1] || '';
+          const desc = parts.slice(2).join(':') || '';
           return {
             name,
             start: s.start_time,
             end: s.end_time,
             shiftId: s.id,
-            isFerie,
+            isFerie: tag === 'ferie',
+            isOpptatt: tag === 'opptatt',
+            desc,
             isMe: name.toLowerCase() === currentProfile.name.split(' ')[0].toLowerCase()
           };
         });
@@ -1047,25 +1062,33 @@ async function renderForside(c) {
         end: s.end_time,
         shiftId: s.id,
         isFerie: false,
+        isOpptatt: false,
+        desc: '',
         isMe: sg.user_id === currentProfile.id
       }));
     });
 
     allPeople.sort((a, b) => {
-      if (a.isFerie !== b.isFerie) return a.isFerie ? 1 : -1;
+      if (a.isFerie !== b.isFerie || a.isOpptatt !== b.isOpptatt) {
+        if (!a.isFerie && !a.isOpptatt) return -1;
+        if (!b.isFerie && !b.isOpptatt) return 1;
+        return a.isFerie ? 1 : -1;
+      }
       return a.name.localeCompare(b.name, 'no');
     });
 
     allPeople.forEach(p => {
       const firstName = p.name.split(' ')[0];
-      const style = p.isFerie
-        ? 'background:var(--red-light);color:var(--red);border:1px solid #D4AAAA;'
-        : p.isMe ? 'background:#C8E6D4;color:#2E7D4F;' : '';
+      let style = '';
+      if (p.isFerie) style = 'background:var(--red-light);color:var(--red);border:1px solid #D4AAAA;';
+      else if (p.isOpptatt) style = 'background:#EDE8F5;color:#6B5A8A;border:1px solid #C4B8DC;';
+      else if (p.isMe) style = 'background:#C8E6D4;color:#2E7D4F;';
       inner += `<div class="cal-person" style="${style}">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
           <div>
-            <div class="cal-person-name">${firstName}${p.isFerie ? ' 🏖' : ''}</div>
-            ${!p.isFerie ? `<div class="cal-person-time">${p.start.substring(0,5)}–${p.end.substring(0,5)}</div>` : ''}
+            <div class="cal-person-name">${firstName}${p.isFerie ? ' 🏖' : p.isOpptatt ? ' •' : ''}</div>
+            ${p.isOpptatt && p.desc ? `<div class="cal-person-time" style="color:#8B78B0;">${p.desc}</div>` : ''}
+            ${!p.isFerie && !p.isOpptatt ? `<div class="cal-person-time">${p.start.substring(0,5)}–${p.end.substring(0,5)}</div>` : ''}
           </div>
           <span onclick="event.stopPropagation();promptDelete('${p.shiftId}')" style="cursor:pointer;opacity:.4;font-size:13px;padding:0 2px;" title="Slett">×</span>
         </div>
@@ -1409,8 +1432,10 @@ function setShiftType(type) {
   currentShiftType = type;
   document.getElementById('type-jobb').classList.toggle('active', type === 'jobb');
   document.getElementById('type-ferie').classList.toggle('active', type === 'ferie');
-  // Hide time pickers for ferie
-  document.getElementById('day-times-list').style.opacity = type === 'ferie' ? '0.4' : '1';
+  document.getElementById('type-opptatt').classList.toggle('active', type === 'opptatt');
+  const dimTimes = type === 'ferie' || type === 'opptatt';
+  document.getElementById('day-times-list').style.opacity = dimTimes ? '0.4' : '1';
+  document.getElementById('opptatt-desc-field').style.display = type === 'opptatt' ? 'block' : 'none';
 }
 
 let savedScrollY = 0;
@@ -1421,6 +1446,7 @@ async function openShiftModalForDay(loc, date) {
   modalNames = [];
   currentShiftType = 'jobb';
   setShiftType('jobb');
+  document.getElementById('m-opptatt-desc').value = '';
   document.getElementById('m-location').value = loc;
   const { start, end } = getDefaultTimes(loc);
   selectedDays = [{ date, start, end }];

@@ -206,7 +206,7 @@ color:var(--sage);border-radius:20px;padding:4px 10px;font-size:13px;font-weight
 <body>
 
 <!-- LOADING -->
-<div id="loading-screen" class="screen active center-wrap">
+<div id="loading-screen" class="screen center-wrap">
   <div class="logo">Soli Brug</div>
   <div class="spinner" style="margin-top:2rem;"></div>
 </div>
@@ -340,6 +340,22 @@ create or replace trigger on_auth_user_created
   </div>
 </div>
 
+<!-- ACCESS CODE SCREEN -->
+<div id="access-screen" class="screen active center-wrap">
+  <div class="logo">Soli Brug</div>
+  <div class="logo-sub">Vaktplanlegging</div>
+  <div class="card">
+    <h2>Velkommen</h2>
+    <p>Skriv inn tilgangskoden for å fortsette.</p>
+    <div id="access-error" class="error-msg"></div>
+    <div class="field">
+      <label>Tilgangskode</label>
+      <input type="password" id="access-code" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkAccessCode()" />
+    </div>
+    <button class="btn btn-primary" onclick="checkAccessCode()">Fortsett →</button>
+  </div>
+</div>
+
 <!-- LOGIN SCREEN -->
 <div id="login-screen" class="screen center-wrap">
   <div class="logo">Soli Brug</div>
@@ -347,11 +363,11 @@ create or replace trigger on_auth_user_created
   <div class="card">
     <div id="login-form">
       <h2>Logg inn</h2>
-      <p>Skriv inn din e-postadresse for å motta en innloggingslenke. Ingen passord nødvendig.</p>
+      <p>Skriv inn din e-postadresse for å motta en innloggingslenke.</p>
       <div id="login-error" class="error-msg"></div>
       <div class="field">
         <label>E-postadresse</label>
-        <input type="email" id="login-email" placeholder="navn@soli-brug.no" onkeydown="if(event.key==='Enter')sendMagicLink()" />
+        <input type="email" id="login-email" placeholder="navn@eksempel.no" onkeydown="if(event.key==='Enter')sendMagicLink()" />
       </div>
       <button class="btn btn-primary" id="login-btn" onclick="sendMagicLink()">Send innloggingslenke →</button>
       <button class="btn btn-outline btn-sm" onclick="resetSetup()" style="margin-top:.75rem;width:100%;font-size:11px;color:var(--ink-faint);">⚙ Endre oppsett</button>
@@ -573,6 +589,19 @@ const LOCS = {
 let sb = null, currentUser = null, currentProfile = null;
 let currentPage = 'today', weekOffset = 0;
 
+function checkAccessCode() {
+  const code = document.getElementById('access-code').value;
+  const err = document.getElementById('access-error');
+  if (code === 'SoliBrug') {
+    localStorage.setItem('soli_access', '1');
+    showScreen('login');
+    setTimeout(() => document.getElementById('login-email').focus(), 100);
+  } else {
+    showErr(err, 'Feil kode. Prøv igjen.');
+    document.getElementById('access-code').value = '';
+  }
+}
+
 // ─── INIT ────────────────────────────────────────────────────────────────────
 async function init() {
   const url = 'https://qeftgujvmytbjtvtkkvn.supabase.co';
@@ -583,11 +612,20 @@ async function init() {
 
   try {
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) { showScreen('login'); return; }
+    if (!session) {
+      // Check if access code already entered
+      if (localStorage.getItem('soli_access') === '1') {
+        showScreen('login');
+      } else {
+        showScreen('access');
+        setTimeout(() => document.getElementById('access-code').focus(), 100);
+      }
+      return;
+    }
     currentUser = session.user;
     await afterLogin();
   } catch(e) {
-    showScreen('login');
+    showScreen('access');
   }
 
   sb.auth.onAuthStateChange(async (event, session) => {

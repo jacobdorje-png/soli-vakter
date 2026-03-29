@@ -198,6 +198,1727 @@ color:var(--sage);border-radius:20px;padding:4px 10px;font-size:13px;font-weight
 .toast.show{transform:translateY(0);opacity:1;}
 
 @media(max-width:640px){
+  .content{padding-bottom:80px !important;}
+  .sidebar{display:none;}
+  .content{padding:.75rem;}
+  .card{padding:1.25rem;}
+  .topbar{padding:0 .75rem;height:50px;}
+  .topbar-logo{font-size:1.1rem;}
+  .user-chip{display:none;}
+  .btn-sm{padding:5px 10px;font-size:11px;}
+  .cal-grid{grid-template-columns:repeat(7,1fr);gap:2px;}
+  .cal-day{padding:4px;min-height:60px;}
+  .cal-day-name{font-size:8px;letter-spacing:0;}
+  .cal-day-num{font-size:.95rem;margin-bottom:3px;}
+  .cal-person{padding:2px 3px;}
+  .cal-person-name{font-size:9px;}
+  .cal-person-time{font-size:8px;}
+  .cal-add-hint{font-size:8px;}
+  .cal-event{padding:2px 3px;}
+  .cal-event-title{font-size:9px;}
+  .cal-week-label{font-size:10px;margin-top:1rem;}
+  .cal-loc-title{font-size:1.2rem;}
+  .modal{padding:1.25rem;max-height:85vh;overflow-y:auto;}
+  .modal h3{font-size:1.2rem;}
+  .day-btn{padding:5px 7px;font-size:11px;}
+  .page-header h1{font-size:1.5rem;}
+  .shift-card{flex-wrap:wrap;gap:8px;}
+  .shift-time{min-width:auto;font-size:1rem;}
+  .logo{font-size:2rem;}
+  .topbar-right{gap:6px;}
+  .main-layout{flex-direction:column;}
+  /* Bottom nav for mobile */
+  .mobile-nav{display:flex;}
+}
+@media(min-width:641px){
+  .mobile-nav{display:none !important;}
+}
+.mobile-nav{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--warm-white);border-top:1px solid var(--border);
+  display:flex;z-index:150;padding-bottom:env(safe-area-inset-bottom);
+}
+.mobile-nav-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:8px 4px;font-size:10px;color:var(--ink-muted);cursor:pointer;
+  border:none;background:transparent;font-family:var(--font);gap:3px;
+  transition:color .15s;
+}
+.mobile-nav-item.active{color:var(--gold);}
+.mobile-nav-item span:first-child{font-size:18px;}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen" class="screen center-wrap">
+  <div class="logo">Soli Brug</div>
+  <div class="spinner" style="margin-top:2rem;"></div>
+</div>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen" class="screen center-wrap" style="overflow-y:auto;align-items:flex-start;padding:3rem 1rem;">
+  <div class="logo">Soli Brug</div>
+  <div class="logo-sub">Vaktplan — Oppsett</div>
+  <div class="card" style="max-width:540px;">
+    <div class="setup-steps">
+      <div class="setup-step done" id="step-bar-1"></div>
+      <div class="setup-step" id="step-bar-2"></div>
+      <div class="setup-step" id="step-bar-3"></div>
+    </div>
+
+    <!-- Step 1: Create project -->
+    <div id="setup-step-1">
+      <h2>Steg 1 av 3 — Opprett Supabase-prosjekt</h2>
+      <p>Supabase er gratis og håndterer databasen og innlogging. Følg disse stegene:</p>
+      <ol style="padding-left:1.25rem;line-height:2;font-size:13px;color:var(--ink-muted);">
+        <li>Gå til <a href="https://supabase.com" target="_blank" style="color:var(--gold);">supabase.com</a> og opprett en gratis konto</li>
+        <li>Klikk <b style="color:var(--ink);">New Project</b> og gi det et navn (f.eks. «soli-vakter»)</li>
+        <li>Velg en region (f.eks. <b style="color:var(--ink);">West EU</b> for Norge)</li>
+        <li>Vent til prosjektet er ferdig opprettet (~1 minutt)</li>
+      </ol>
+      <button class="btn btn-primary" onclick="goSetupStep(2)" style="margin-top:1rem;">Prosjekt opprettet →</button>
+    </div>
+
+    <!-- Step 2: SQL -->
+    <div id="setup-step-2" style="display:none;">
+      <h2>Steg 2 av 3 — Kjør databaseoppsettet</h2>
+      <p>Gå til <b style="color:var(--ink);">SQL Editor</b> i Supabase-dashbordet, lim inn koden under og klikk <b style="color:var(--ink);">Run</b>.</p>
+      <div class="code-block" id="sql-code">-- Kjør dette i Supabase SQL Editor
+
+create table public.profiles (
+  id uuid references auth.users on delete cascade primary key,
+  email text not null,
+  name text not null default '',
+  is_admin boolean not null default false,
+  created_at timestamptz default now()
+);
+
+create table public.shifts (
+  id uuid default gen_random_uuid() primary key,
+  location text not null,
+  date date not null,
+  start_time time not null,
+  end_time time not null,
+  role text not null default 'Vakt',
+  slots integer not null default 1,
+  created_at timestamptz default now()
+);
+
+create table public.signups (
+  id uuid default gen_random_uuid() primary key,
+  shift_id uuid references public.shifts on delete cascade not null,
+  user_id uuid references public.profiles on delete cascade not null,
+  status text not null default 'pending',
+  created_at timestamptz default now(),
+  unique(shift_id, user_id)
+);
+
+alter table public.profiles enable row level security;
+alter table public.shifts enable row level security;
+alter table public.signups enable row level security;
+
+create policy "read_profiles" on public.profiles for select to authenticated using (true);
+create policy "insert_own_profile" on public.profiles for insert to authenticated with check (auth.uid() = id);
+create policy "update_own_profile" on public.profiles for update to authenticated using (auth.uid() = id);
+create policy "admin_update_profiles" on public.profiles for update to authenticated using ((select is_admin from public.profiles where id = auth.uid()));
+
+create policy "read_shifts" on public.shifts for select to authenticated using (true);
+create policy "insert_shifts" on public.shifts for insert to authenticated with check (true);
+create policy "delete_shifts" on public.shifts for delete to authenticated using (true);
+
+create policy "read_signups" on public.signups for select to authenticated using (true);
+create policy "insert_own_signup" on public.signups for insert to authenticated with check (true);
+create policy "delete_own_signup" on public.signups for delete to authenticated using (true);
+create policy "admin_update_signups" on public.signups for update to authenticated using ((select is_admin from public.profiles where id = auth.uid()));
+
+create table public.events (
+  id uuid default gen_random_uuid() primary key,
+  location text not null,
+  date date not null,
+  title text not null,
+  created_by uuid references public.profiles on delete set null,
+  created_at timestamptz default now()
+);
+alter table public.events enable row level security;
+create policy "read_events" on public.events for select to authenticated using (true);
+create policy "insert_events" on public.events for insert to authenticated with check (true);
+create policy "delete_events" on public.events for delete to authenticated using (true);
+
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, email, name)
+  values (new.id, new.email, split_part(new.email, '@', 1));
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create or replace trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();</div>
+      <button class="copy-btn" onclick="copySQL()">📋 Kopier SQL</button>
+      <button class="btn btn-primary" onclick="goSetupStep(3)" style="margin-top:1rem;">SQL er kjørt →</button>
+      <button class="btn btn-outline btn-sm" onclick="goSetupStep(1)" style="margin-top:.5rem;width:100%;">← Tilbake</button>
+    </div>
+
+    <!-- Step 3: API keys -->
+    <div id="setup-step-3" style="display:none;">
+      <h2>Steg 3 av 3 — Koble til appen</h2>
+      <p>Gå til <b style="color:var(--ink);">Project Settings → API</b> i Supabase og lim inn verdiene under.</p>
+      <div id="setup-error" class="error-msg"></div>
+      <div class="field">
+        <label>Project URL</label>
+        <input type="url" id="sb-url" placeholder="https://xxxxxxxxxxx.supabase.co" />
+      </div>
+      <div class="field">
+        <label>Anon / Public Key</label>
+        <input type="text" id="sb-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
+      </div>
+      <div class="info-box">
+        <b>Etter oppsett:</b> For å gjøre deg selv til admin, gå til Supabase → Table Editor → profiles → finn din rad og sett <code style="background:rgba(0,0,0,.08);padding:1px 4px;border-radius:3px;">is_admin = true</code>. Alternativt, kjør i SQL Editor:<br>
+        <code style="font-size:11px;">UPDATE public.profiles SET is_admin = true WHERE email = 'din@epost.no';</code>
+      </div>
+      <button class="btn btn-primary" onclick="saveConfig()" style="margin-top:1.25rem;">Koble til →</button>
+      <button class="btn btn-outline btn-sm" onclick="goSetupStep(2)" style="margin-top:.5rem;width:100%;">← Tilbake</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACCESS SCREEN -->
+<div id="access-screen" class="screen active center-wrap">
+  <div class="logo">Soli Brug</div>
+  <div class="logo-sub">Vaktplanlegging</div>
+  <div class="card">
+    <div id="access-step-1">
+      <h2>Velkommen</h2>
+      <p>Skriv inn tilgangskoden for å fortsette.</p>
+      <div id="access-error" class="error-msg"></div>
+      <div class="field">
+        <label>Tilgangskode</label>
+        <input type="password" id="access-code" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkAccessCode()" />
+      </div>
+      <button class="btn btn-primary" onclick="checkAccessCode()">Fortsett →</button>
+    </div>
+    <div id="access-step-2" style="display:none;">
+      <h2>Hva heter du?</h2>
+      <p>Skriv inn ditt fornavn slik det vises i vaktplanen.</p>
+      <div id="name-error" class="error-msg"></div>
+      <div class="field">
+        <label>Navn</label>
+        <input type="text" id="access-name" placeholder="Fornavn" onkeydown="if(event.key==='Enter')submitName()" />
+      </div>
+      <button class="btn btn-primary" onclick="submitName()">Kom i gang →</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app-screen" class="screen" style="flex-direction:column;">
+  <div class="topbar">
+    <div class="topbar-logo">Soli Brug</div>
+    <div class="topbar-right">
+      <span class="user-chip" id="user-chip"></span>
+      <span class="admin-badge" id="admin-badge" style="display:none;">Admin</span>
+      <button class="btn btn-outline btn-sm" onclick="doLogout()">Bytt navn</button>
+    </div>
+  </div>
+  <div class="main-layout">
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Oversikt</div>
+        <div class="nav-item" id="nav-today" onclick="showPage('today')">☀️ &nbsp;I dag</div>
+        <div class="nav-item" id="nav-forside" onclick="showPage('forside')">📅 &nbsp;Ukeoversikt</div>
+        <div class="nav-item" id="nav-my" onclick="showPage('my')">📋 &nbsp;Mine vakter</div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Lokasjoner</div>
+        <div class="nav-item" id="nav-soli" onclick="showPage('soli')"><span class="nav-dot" style="background:#A8865A;"></span>Soli</div>
+        <div class="nav-item" id="nav-restaurant" onclick="showPage('restaurant')"><span class="nav-dot" style="background:#4A7A5A;"></span>Fredrikstad</div>
+        <div class="nav-item" id="nav-fredrikstad" onclick="showPage('fredrikstad')"><span class="nav-dot" style="background:#6B5A8A;"></span>Smia</div>
+      </div>
+      <div class="sidebar-section" id="admin-nav" style="display:none;">
+        <div class="sidebar-label">Admin</div>
+        <div class="nav-item" id="nav-admin-shifts" onclick="showPage('admin-shifts')">⚙️ &nbsp;Legg til vakter</div>
+        <div class="nav-item" id="nav-admin-approvals" onclick="showPage('admin-approvals')">✅ &nbsp;Godkjenninger <span class="nav-badge" id="pending-badge" style="display:none;"></span></div>
+        <div class="nav-item" id="nav-admin-employees" onclick="showPage('admin-employees')">👥 &nbsp;Ansatte</div>
+      </div>
+    </div>
+    <div class="content" id="main-content" style="">
+      <div class="loading-wrap"><div class="spinner"></div><span>Laster...</span></div>
+    </div>
+  </div>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="mobile-nav">
+    <button class="mobile-nav-item" id="mnav-today" onclick="showPage('today')">
+      <span>☀️</span><span>I dag</span>
+    </button>
+    <button class="mobile-nav-item active" id="mnav-forside" onclick="showPage('forside')">
+      <span>📅</span><span>Oversikt</span>
+    </button>
+    <button class="mobile-nav-item" id="mnav-soli" onclick="showPage('soli')">
+      <span style="width:10px;height:10px;border-radius:50%;background:#A8865A;display:inline-block;"></span><span>Soli</span>
+    </button>
+    <button class="mobile-nav-item" id="mnav-restaurant" onclick="showPage('restaurant')">
+      <span style="width:10px;height:10px;border-radius:50%;background:#4A7A5A;display:inline-block;"></span><span>Fredrikstad</span>
+    </button>
+    <button class="mobile-nav-item" id="mnav-fredrikstad" onclick="showPage('fredrikstad')">
+      <span style="width:10px;height:10px;border-radius:50%;background:#6B5A8A;display:inline-block;"></span><span>Smia</span>
+    </button>
+    <button class="mobile-nav-item" id="mnav-my" onclick="showPage('my')">
+      <span>📋</span><span>Mine</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ADD SHIFT MODAL -->
+<div class="modal-backdrop" id="shift-modal">
+  <div class="modal" style="max-width:520px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+      <h3 style="margin-bottom:0;">Legg til vakt</h3>
+      <button class="btn btn-outline btn-sm" onclick="switchToEvent()" style="font-size:12px;">+ Hendelse i stedet</button>
+    </div>
+
+    <div class="field">
+      <label>Sted</label>
+      <select id="m-location" onchange="updateModalTimes()">
+        <option value="soli">Soli</option>
+        <option value="restaurant">Fredrikstad</option>
+        <option value="fredrikstad">Smia</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Velg dager</label>
+      <div id="day-picker" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;"></div>
+    </div>
+
+    <div id="day-times-list"></div>
+
+    <div class="field">
+      <label>Hvem jobber?</label>
+      <div id="saved-name-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;"></div>
+      <div id="name-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:10px;"></div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="m-name-input" placeholder="Legg til nytt navn..." style="flex:1;" onkeydown="handleNameKey(event)" oninput="showNameSuggestions()" autocomplete="off" />
+        <button class="btn btn-outline btn-sm" onclick="addNameFromInput()">+</button>
+      </div>
+      <div id="name-suggestions" style="background:var(--warm-white);border:1px solid var(--border);border-radius:8px;margin-top:4px;display:none;max-height:120px;overflow-y:auto;"></div>
+    </div>
+
+    <div class="field">
+      <label>Type</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" id="type-jobb" class="type-btn active" onclick="setShiftType('jobb')">Jobb</button>
+        <button type="button" id="type-ferie" class="type-btn" onclick="setShiftType('ferie')">🏖 Ferie</button>
+        <button type="button" id="type-opptatt" class="type-btn" onclick="setShiftType('opptatt')">Opptatt</button>
+      </div>
+    </div>
+
+    <div class="field" id="opptatt-desc-field" style="display:none;">
+      <label>Beskrivelse <span style="color:var(--ink-faint);font-weight:300;">(valgfritt)</span></label>
+      <input type="text" id="m-opptatt-desc" placeholder="f.eks. Tannlege, Møte, Kurs..." />
+    </div>
+
+    <div id="shift-modal-error" class="error-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Avbryt</button>
+      <button class="btn btn-gold" id="save-shift-btn" onclick="saveShift()">Lagre vakter</button>
+    </div>
+  </div>
+</div>
+
+<!-- EVENT MODAL -->
+<div class="modal-backdrop" id="event-modal">
+  <div class="modal" style="max-width:360px;">
+    <h3>Legg til hendelse</h3>
+    <div class="field">
+      <label>Dato</label>
+      <input type="date" id="ev-date" />
+    </div>
+    <div class="field">
+      <label>Sted</label>
+      <select id="ev-location">
+        <option value="soli">Soli</option>
+        <option value="restaurant">Fredrikstad</option>
+        <option value="fredrikstad">Smia</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Tittel</label>
+      <input type="text" id="ev-title" placeholder="f.eks. Vernissage, Møte, Lukket..." onkeydown="if(event.key==='Enter')saveEvent()" />
+    </div>
+    <div class="field">
+      <label>Tidspunkt <span style="color:var(--ink-faint);font-weight:300;">(valgfritt)</span></label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="ev-start" style="flex:1;">
+          <option value="">Hele dagen</option>
+        </select>
+        <span style="color:var(--ink-faint);font-size:12px;">–</span>
+        <select id="ev-end" style="flex:1;">
+          <option value="">–</option>
+        </select>
+      </div>
+    </div>
+    <div id="event-modal-error" class="error-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('event-modal').classList.remove('open')">Avbryt</button>
+      <button class="btn btn-gold" onclick="saveEvent()">Lagre</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT EVENT MODAL -->
+<div class="modal-backdrop" id="edit-event-modal">
+  <div class="modal" style="max-width:360px;">
+    <h3>Rediger hendelse</h3>
+    <input type="hidden" id="edit-ev-id" />
+    <div class="field">
+      <label>Dato</label>
+      <input type="date" id="edit-ev-date" />
+    </div>
+    <div class="field">
+      <label>Sted</label>
+      <select id="edit-ev-location">
+        <option value="soli">Soli</option>
+        <option value="restaurant">Fredrikstad</option>
+        <option value="fredrikstad">Smia</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Tittel</label>
+      <input type="text" id="edit-ev-title" onkeydown="if(event.key==='Enter')updateEvent()" />
+    </div>
+    <div class="field">
+      <label>Tidspunkt <span style="color:var(--ink-faint);font-weight:300;">(valgfritt)</span></label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="edit-ev-start" style="flex:1;"></select>
+        <span style="color:var(--ink-faint);font-size:12px;">–</span>
+        <select id="edit-ev-end" style="flex:1;"></select>
+      </div>
+    </div>
+    <div id="edit-event-error" class="error-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="deleteEventFromEdit()" style="margin-right:auto;">Slett</button>
+      <button class="btn btn-outline" onclick="document.getElementById('edit-event-modal').classList.remove('open')">Avbryt</button>
+      <button class="btn btn-gold" onclick="updateEvent()">Lagre</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal-backdrop" id="delete-modal">
+  <div class="modal" style="max-width:360px;">
+    <h3>Slett vakt</h3>
+    <p style="color:var(--ink-muted);margin-bottom:1.5rem;">Er du sikker på at du vil slette denne vakten?</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('delete-modal').classList.remove('open')">Avbryt</button>
+      <button class="btn btn-danger" id="confirm-delete-btn" onclick="confirmDelete()">Slett</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+const { createClient } = supabase;
+const LOCS = {
+  soli:        { name: 'Soli',        color: '#A8865A' },
+  restaurant:  { name: 'Fredrikstad', color: '#4A7A5A' },
+  fredrikstad: { name: 'Smia',        color: '#6B5A8A' }
+};
+
+let sb = null, currentUser = null, currentProfile = null;
+let currentPage = 'today', weekOffset = 0;
+
+function checkAccessCode() {
+  const code = document.getElementById('access-code').value;
+  const err = document.getElementById('access-error');
+  if (code === 'SoliBrug') {
+    localStorage.setItem('soli_access', '1');
+    document.getElementById('access-step-1').style.display = 'none';
+    document.getElementById('access-step-2').style.display = 'block';
+    setTimeout(() => document.getElementById('access-name').focus(), 100);
+  } else {
+    showErr(err, 'Feil kode. Prøv igjen.');
+    document.getElementById('access-code').value = '';
+  }
+}
+
+function submitName() {
+  const name = document.getElementById('access-name').value.trim();
+  const err = document.getElementById('name-error');
+  if (!name || name.length < 2) { showErr(err, 'Skriv inn ditt navn'); return; }
+  localStorage.setItem('soli_name', name);
+  currentProfile = { name, is_admin: false, id: name };
+  launchApp();
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+async function init() {
+  const url = 'https://qeftgujvmytbjtvtkkvn.supabase.co';
+  const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlZnRndWp2bXl0Ymp0dnRra3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MjgwMjgsImV4cCI6MjA5MDEwNDAyOH0.rUBFLykrr3Gstz4SkDedB0M_VZEwgdUpLZj0r2DymoI';
+  sb = createClient(url, key);
+
+  // Check if already logged in
+  const access = localStorage.getItem('soli_access');
+  const name = localStorage.getItem('soli_name');
+  if (access === '1' && name) {
+    currentProfile = { name, is_admin: false, id: name };
+    launchApp();
+  } else if (access === '1') {
+    document.getElementById('access-step-1').style.display = 'none';
+    document.getElementById('access-step-2').style.display = 'block';
+    showScreen('access');
+    setTimeout(() => document.getElementById('access-name').focus(), 100);
+  } else {
+    showScreen('access');
+    setTimeout(() => document.getElementById('access-code').focus(), 100);
+  }
+}
+
+function launchApp() {
+  document.getElementById('user-chip').textContent = currentProfile.name;
+  document.getElementById('admin-badge').style.display = 'none';
+  document.getElementById('admin-nav').style.display = 'none';
+  showScreen('app');
+  showPage('forside');
+}
+
+function doLogout() {
+  localStorage.removeItem('soli_name');
+  currentProfile = null;
+  document.getElementById('access-step-1').style.display = 'none';
+  document.getElementById('access-step-2').style.display = 'block';
+  document.getElementById('access-name').value = '';
+  showScreen('access');
+  setTimeout(() => document.getElementById('access-name').focus(), 100);
+}
+
+function shortName(n) {
+  const parts = (n||'').trim().split(' ');
+  return parts.length >= 2 ? parts[0] + ' ' + parts[parts.length - 1][0] + '.' : parts[0];
+}
+
+// ─── AUTH (unused but kept for setup) ────────────────────────────────────────
+async function sendMagicLink() {}
+async function saveProfile() {}
+async function afterLogin() {}
+
+// ─── SETUP ───────────────────────────────────────────────────────────────────
+let setupStep = 1;
+function goSetupStep(n) {
+  setupStep = n;
+  [1,2,3].forEach(i => {
+    document.getElementById('setup-step-' + i).style.display = i === n ? 'block' : 'none';
+    document.getElementById('step-bar-' + i).classList.toggle('done', i <= n);
+  });
+}
+
+async function saveConfig() {
+  const url = document.getElementById('sb-url').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('sb-key').value.trim();
+  const err = document.getElementById('setup-error');
+  if (!url.startsWith('https://') || !key) { showErr(err, 'Fyll inn begge feltene'); return; }
+  err.style.display = 'none';
+  localStorage.setItem('sb_url', url);
+  localStorage.setItem('sb_key', key);
+  sb = createClient(url, key);
+  const { error } = await sb.from('profiles').select('id').limit(1);
+  if (error && error.code !== 'PGRST116') {
+    localStorage.removeItem('sb_url'); localStorage.removeItem('sb_key');
+    showErr(err, 'Kunne ikke koble til. Sjekk URL og nøkkel, og at SQL er kjørt.'); return;
+  }
+  showScreen('login');
+  toast('Tilkoblet! Logg inn for å fortsette.');
+}
+
+function resetSetup() {
+  localStorage.removeItem('sb_url'); localStorage.removeItem('sb_key');
+  goSetupStep(1);
+  showScreen('setup');
+}
+
+function copySQL() {
+  const text = document.getElementById('sql-code').textContent;
+  navigator.clipboard.writeText(text).then(() => toast('SQL kopiert!')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    toast('SQL kopiert!');
+  });
+}
+
+// ─── DATA ────────────────────────────────────────────────────────────────────
+async function fetchShifts(location, startDate, endDate) {
+  let q = sb.from('shifts')
+    .select('id, location, date, start_time, end_time, role, slots, signups(id, user_id, status, profiles:user_id(id, name))')
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date').order('start_time');
+  if (location) q = q.eq('location', location);
+  const { data, error } = await q;
+  if (error) { toast('Feil ved henting av vakter'); return []; }
+  return data || [];
+}
+
+async function fetchTodayShifts() {
+  return fetchShifts(null, fmtDate(new Date()), fmtDate(new Date()));
+}
+
+async function fetchMyShifts() {
+  const { data, error } = await sb.from('signups')
+    .select('id, status, shift_id, shifts(id, location, date, start_time, end_time, role, slots, signups(id, user_id, status, profiles:user_id(id, name)))')
+    .eq('user_id', currentProfile.id)
+    .order('created_at');
+  if (error) { toast('Feil: ' + error.message); return []; }
+  return (data || []).map(s => s.shifts).filter(Boolean);
+}
+
+async function fetchPendingSignups() {
+  const { data, error } = await sb.from('signups')
+    .select('id, status, user_id, shift_id, profiles:user_id(name, email), shifts(id, location, date, start_time, end_time, role)')
+    .eq('status', 'pending')
+    .order('created_at');
+  if (error) return [];
+  return data || [];
+}
+
+async function fetchAllProfiles() {
+  const { data, error } = await sb.from('profiles').select('*').order('name');
+  if (error) return [];
+  return data || [];
+}
+
+async function refreshPendingCount() { /* no admin in this version */ }
+
+// ─── MUTATIONS ───────────────────────────────────────────────────────────────
+async function doSignup(shiftId) {
+  const { error } = await sb.from('signups').insert({ shift_id: shiftId, user_id: currentProfile.id, status: 'pending' });
+  if (error) { toast('Feil: ' + error.message); return; }
+  toast('Påmelding sendt — venter på godkjenning');
+  showPage(currentPage, savedScrollY);
+  if (currentProfile.is_admin) refreshPendingCount();
+}
+
+async function doSignupDirect(shiftId) { savedScrollY = window.scrollY;
+  const { error } = await sb.from('signups').insert({ shift_id: shiftId, user_id: currentProfile.id, status: 'approved' });
+  if (error) { toast('Feil: ' + error.message); return; }
+  toast('Du er satt på vakten!');
+  showPage(currentPage, savedScrollY);
+}
+
+async function doLeave(shiftId) { savedScrollY = window.scrollY;
+  const { error } = await sb.from('signups').delete().eq('shift_id', shiftId).eq('user_id', currentProfile.id);
+  if (error) { toast('Feil: ' + error.message); return; }
+  toast('Du er avmeldt vakten');
+  showPage(currentPage, savedScrollY);
+}
+
+async function doApprove(signupId) {
+  const { error } = await sb.from('signups').update({ status: 'approved' }).eq('id', signupId);
+  if (error) { toast('Feil: ' + error.message); return; }
+  toast('Godkjent!');
+  showPage('admin-approvals');
+  refreshPendingCount();
+}
+
+async function doReject(signupId) {
+  const { error } = await sb.from('signups').delete().eq('id', signupId);
+  if (error) { toast('Feil: ' + error.message); return; }
+  toast('Avslått');
+  showPage('admin-approvals');
+  refreshPendingCount();
+}
+
+async function doDeleteShift(shiftId) { savedScrollY = window.scrollY;
+  const { error } = await sb.from('shifts').delete().eq('id', shiftId);
+  if (error) { toast('Feil: ' + error.message); return; }
+  toast('Vakt slettet');
+  showPage(currentPage, savedScrollY);
+}
+
+async function saveShift() {
+  const btn = document.getElementById('save-shift-btn');
+  const err = document.getElementById('shift-modal-error');
+  err.style.display = 'none';
+
+  try {
+    collectDayTimes();
+    const location = document.getElementById('m-location').value;
+
+    if (selectedDays.length === 0) { showErr(err, 'Velg minst én dag'); return; }
+    if (modalNames.length === 0) { showErr(err, 'Legg til minst ett navn'); return; }
+
+    btn.disabled = true; btn.textContent = 'Lagrer...';
+
+    const names = modalNames;
+    const isFerie = currentShiftType === 'ferie';
+    const isOpptatt = currentShiftType === 'opptatt';
+    const desc = isOpptatt ? (document.getElementById('m-opptatt-desc').value.trim() || '') : '';
+    const role = isFerie
+      ? names.map(n => `${n.name}:ferie`).join(', ')
+      : isOpptatt
+        ? names.map(n => `${n.name}:opptatt${desc ? ':'+desc : ''}`).join(', ')
+        : names.map(n => n.name).join(', ');
+    const slots = names.length;
+
+    // Create one shift per day
+    for (const day of selectedDays) {
+      const { data: shiftData, error: shiftError } = await sb.from('shifts')
+        .insert({ location, date: day.date, start_time: day.start, end_time: day.end, role, slots })
+        .select().single();
+
+      if (shiftError) throw new Error(shiftError.message);
+
+      for (const n of names) {
+        if (n.name === 'Fri') { saveName(n.name); continue; } // Fri = no signup, just label
+        let userId = n.userId;
+        if (!userId) {
+          const { data: found } = await sb.from('profiles').select('id').ilike('name', n.name + '%').limit(1);
+          userId = found?.[0]?.id || currentProfile.id;
+        }
+        await sb.from('signups').insert({ shift_id: shiftData.id, user_id: userId, status: 'approved' });
+        saveName(n.name);
+      }
+    }
+
+    btn.disabled = false; btn.textContent = 'Lagre vakter';
+    closeModal();
+    toast(`${selectedDays.length > 1 ? selectedDays.length + ' vakter' : 'Vakt'} lagret!`);
+    showPage(currentPage, savedScrollY);
+
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Lagre vakter';
+    showErr(err, 'Feil: ' + e.message);
+  }
+}
+
+// ─── PAGES ───────────────────────────────────────────────────────────────────
+let _scrollRestore = null; // set this before showPage to restore scroll after render
+
+async function showPage(page, restoreScroll) {
+  const scrollY = restoreScroll !== undefined ? restoreScroll : (page === currentPage ? window.scrollY : 0);
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.mobile-nav-item').forEach(n => n.classList.remove('active'));
+  const nav = document.getElementById('nav-' + page);
+  if (nav) nav.classList.add('active');
+  const mnav = document.getElementById('mnav-' + page);
+  if (mnav) mnav.classList.add('active');
+  const c = document.getElementById('main-content');
+  c.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><span>Laster...</span></div>';
+
+  if (page === 'today') await renderToday(c);
+  else if (page === 'forside') await renderForside(c);
+  else if (page === 'my') await renderMy(c);
+  else if (LOCS[page]) await renderLocation(page, c);
+  else if (page === 'admin-shifts') await renderAdminShifts(c);
+  else if (page === 'admin-approvals') await renderAdminApprovals(c);
+  else if (page === 'admin-employees') await renderAdminEmployees(c);
+
+  if (scrollY > 0) {
+    requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }));
+  }
+}
+
+async function renderToday(c) {
+  const shifts = await fetchTodayShifts();
+  const d = new Date();
+  let html = `<div class="page-header"><h1>I dag — ${norDay(d)}</h1><p>Hvem er på jobb akkurat nå</p></div><div class="today-grid">`;
+
+  for (const [key, loc] of Object.entries(LOCS)) {
+    const lShifts = shifts.filter(s => s.location === key);
+    html += `<div class="today-card"><h4>${loc.name}</h4>`;
+    const workers = lShifts.flatMap(s => (s.signups||[]).filter(sg=>sg.status==='approved').map(sg => ({...sg, shift: s})));
+    if (!workers.length) {
+      html += `<div class="empty-msg">Ingen registrerte i dag</div>`;
+    } else {
+      workers.forEach(w => {
+        const name = w.profiles?.name || '?';
+        const initials = name.split(' ').map(x=>x[0]).join('').substring(0,2).toUpperCase();
+        html += `<div class="worker-row"><div class="avatar">${initials}</div><div><div style="font-weight:500;">${name}</div><div style="font-size:11px;color:var(--ink-muted);">${w.shift.start_time.substring(0,5)}–${w.shift.end_time.substring(0,5)} · ${w.shift.role}</div></div></div>`;
+      });
+    }
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  if (!currentProfile.is_admin) {
+    const open = shifts.filter(s => {
+      const approved = (s.signups||[]).filter(sg=>sg.status==='approved').length;
+      const myStatus = (s.signups||[]).find(sg=>sg.user_id===currentProfile.id);
+      return approved < s.slots && !myStatus;
+    });
+    if (open.length) {
+      html += `<div class="page-header" style="margin-top:2rem;"><h1 style="font-size:1.4rem;">Ledige vakter i dag</h1></div>`;
+      open.forEach(s => { html += shiftCard(s, true); });
+    }
+  }
+  c.innerHTML = html;
+}
+
+function toggleFullYear(key) {
+  showFullYear[key] = !showFullYear[key];
+  const c = document.getElementById('main-content');
+  c.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><span>Laster kalender...</span></div>';
+  setTimeout(() => showPage('forside'), 50);
+}
+
+const showFullYear = { soli: false, restaurant: false, fredrikstad: false };
+
+async function renderForside(c) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const dayOfWeek = today.getDay();
+  const daysFromMon = (dayOfWeek + 6) % 7;
+  const monday = addDays(today, -daysFromMon);
+  const todayStr = fmtDate(today);
+  const fourWeeksEnd = addDays(monday, 27);
+  const yearEnd = new Date(today.getFullYear(), 11, 31);
+
+  // Fetch enough for everyone
+  const anyFull = Object.values(showFullYear).some(v => v);
+  const fetchEnd = anyFull ? yearEnd : fourWeeksEnd;
+
+  const [shifts, events] = await Promise.all([
+    fetchShifts(null, fmtDate(monday), fmtDate(fetchEnd)),
+    fetchEvents(fmtDate(monday), fmtDate(fetchEnd))
+  ]);
+
+  const DAY_SHORT = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
+  const MON_NO = ['januar','februar','mars','april','mai','juni','juli','august','september','oktober','november','desember'];
+
+  window.eventsMap = {};
+  events.forEach(e => { window.eventsMap[e.id] = e; });
+
+  function calDay(d, locKey) {
+    const ds = fmtDate(d);
+    const isToday = ds === todayStr;
+    const isPast = ds < todayStr;
+    const dayShifts = shifts.filter(s => s.location === locKey && s.date === ds);
+    const dayEvents = events.filter(e => e.location === locKey && e.date === ds);
+    const dayOfWeekIdx = (d.getDay() + 6) % 7;
+
+    const allDayEvents = dayEvents.filter(e => !e.start_time);
+    const timedEvents = dayEvents.filter(e => e.start_time);
+
+    // If there's an all-day event, the whole cell gets an orange background
+    const hasAllDay = allDayEvents.length > 0;
+
+    let cls = 'cal-day';
+    if (isToday) cls += ' today';
+    if (isPast) cls += ' past';
+    if (hasAllDay) cls += ' all-day-event';
+
+    const clickHandler = isPast ? '' : `onclick="openDayModal('${locKey}','${ds}')"`;
+
+    let inner = `<div class="cal-day-name" style="${hasAllDay?'opacity:.7;':''}">${DAY_SHORT[dayOfWeekIdx]}</div>`;
+    inner += `<div class="cal-day-num" style="${hasAllDay?'opacity:.7;':''}">${d.getDate()}.</div>`;
+
+    // All-day events: show title prominently inside the colored cell
+    allDayEvents.forEach(ev => {
+      inner += `<div style="font-size:10px;font-weight:500;color:#7A3010;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:2px;">
+        <span onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;flex:1;color:#6B3820;word-break:break-word;">${ev.title}</span>
+        <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:12px;flex-shrink:0;color:#6B3820;">×</span>
+      </div>`;
+    });
+
+    // Timed events: still show as pills
+    timedEvents.forEach(ev => {
+      const timeStr = `${ev.start_time.substring(0,5)}${ev.end_time ? '–'+ev.end_time.substring(0,5) : ''}`;
+      inner += `<div class="cal-event">
+        <span class="cal-event-title" onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;">${ev.title} · ${timeStr}</span>
+        <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:13px;" title="Slett">×</span>
+      </div>`;
+    });
+
+    const allPeople = dayShifts.flatMap(s => {
+      const roleNames = (s.role || '').split(',').map(n => n.trim()).filter(Boolean);
+      if (roleNames.length > 0 && roleNames[0] !== 'Vakt') {
+        return roleNames.map(entry => {
+          const parts = entry.split(':');
+          const name = parts[0];
+          const tag = parts[1] || '';
+          const desc = parts.slice(2).join(':') || '';
+          return {
+            name,
+            start: s.start_time,
+            end: s.end_time,
+            shiftId: s.id,
+            isFerie: tag === 'ferie',
+            isOpptatt: tag === 'opptatt',
+            desc,
+            isMe: name.toLowerCase() === currentProfile.name.split(' ')[0].toLowerCase()
+          };
+        });
+      }
+      return (s.signups||[]).filter(sg => sg.status === 'approved').map(sg => ({
+        name: sg.profiles?.name || '?',
+        start: s.start_time,
+        end: s.end_time,
+        shiftId: s.id,
+        isFerie: false,
+        isOpptatt: false,
+        desc: '',
+        isMe: sg.user_id === currentProfile.id
+      }));
+    });
+
+    allPeople.sort((a, b) => {
+      if (a.isFerie !== b.isFerie || a.isOpptatt !== b.isOpptatt) {
+        if (!a.isFerie && !a.isOpptatt) return -1;
+        if (!b.isFerie && !b.isOpptatt) return 1;
+        return a.isFerie ? 1 : -1;
+      }
+      return a.name.localeCompare(b.name, 'no');
+    });
+
+    allPeople.forEach(p => {
+      const firstName = p.name.split(' ')[0];
+      let style = '';
+      if (p.isFerie) style = 'background:var(--red-light);color:var(--red);border:1px solid #D4AAAA;';
+      else if (p.isOpptatt) style = 'background:#EDE8F5;color:#6B5A8A;border:1px solid #C4B8DC;';
+      else if (p.isMe) style = 'background:#C8E6D4;color:#2E7D4F;';
+      inner += `<div class="cal-person" style="${style}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
+          <div>
+            <div class="cal-person-name">${firstName}${p.isFerie ? ' 🏖' : p.isOpptatt ? ' •' : ''}</div>
+            ${p.isOpptatt && p.desc ? `<div class="cal-person-time" style="color:#8B78B0;">${p.desc}</div>` : ''}
+            ${!p.isFerie && !p.isOpptatt ? `<div class="cal-person-time">${p.start.substring(0,5)}–${p.end.substring(0,5)}</div>` : ''}
+          </div>
+          <span onclick="event.stopPropagation();promptDelete('${p.shiftId}')" style="cursor:pointer;opacity:.4;font-size:13px;padding:0 2px;" title="Slett">×</span>
+        </div>
+      </div>`;
+    });
+
+    if (!isPast) inner += `<div class="cal-add-hint">+ legg til</div>`;
+    return `<div class="${cls}" ${clickHandler}>${inner}</div>`;
+  }
+
+  function renderWeek(week, locKey) {
+    return `<div class="cal-grid">${week.map(d => calDay(d, locKey)).join('')}</div>`;
+  }
+
+  function buildWeeks(from, to) {
+    const total = Math.ceil((to - from) / 86400000) + 1;
+    return Array.from({length: Math.ceil(total/7)}, (_,w) =>
+      Array.from({length:7}, (_,d) => addDays(from, w*7+d))
+    ).filter(week => week[0] <= to);
+  }
+
+  const fourWeeks = buildWeeks(monday, fourWeeksEnd);
+  const restStart = addDays(fourWeeksEnd, 1);
+  const restWeeks = buildWeeks(restStart, yearEnd);
+
+  let html = `<div class="page-header" style="margin-bottom:1.5rem;"><h1>Ukeoversikt</h1><p>Trykk på en dag for å legge til</p></div>`;
+
+  for (const [key, loc] of Object.entries(LOCS)) {
+    html += `<div class="cal-wrap">
+      <div class="cal-loc-header">
+        <span style="width:10px;height:10px;border-radius:50%;background:${loc.color};display:inline-block;flex-shrink:0;"></span>
+        <span class="cal-loc-title">${loc.name}</span>
+      </div>`;
+
+    // 4 weeks with uke-labels
+    fourWeeks.forEach(week => {
+      html += `<div class="cal-week-label">Uke ${getWeekNumber(week[0])}</div>${renderWeek(week, key)}`;
+    });
+
+    if (!showFullYear[key]) {
+      // Toggle button
+      html += `<div style="text-align:center;margin:1.25rem 0 0.5rem;">
+        <button class="btn btn-outline btn-sm" onclick="toggleFullYear('${key}')">
+          Vis resten av ${today.getFullYear()} ↓
+        </button>
+      </div>`;
+    } else {
+      // Rest of year grouped by month
+      html += `<div style="border-top:1px solid var(--border);margin-top:1.5rem;padding-top:0.5rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+          <span style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);">Resten av ${today.getFullYear()}</span>
+          <button class="btn btn-outline btn-sm" onclick="toggleFullYear('${key}')">Skjul</button>
+        </div>`;
+
+      let lastMonth = -1;
+      restWeeks.forEach(week => {
+        const mid = week[3];
+        if (mid.getMonth() !== lastMonth) {
+          html += `<div class="cal-week-label" style="font-size:13px;font-weight:400;color:var(--ink-muted);margin-top:1rem;">${MON_NO[mid.getMonth()]}</div>`;
+          lastMonth = mid.getMonth();
+        }
+        html += renderWeek(week, key);
+      });
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+  }
+
+  c.innerHTML = html;
+}
+
+function getWeekNumber(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1)/7);
+}
+
+async function renderMy(c) {
+  const shifts = await fetchMyShifts();
+  let html = `<div class="page-header"><h1>Mine vakter</h1><p>Dine kommende vakter og påmeldinger</p></div>`;
+  const upcoming = shifts.filter(s => s.date >= fmtDate(new Date())).sort((a,b)=>(a.date+a.start_time).localeCompare(b.date+b.start_time));
+  if (!upcoming.length) {
+    html += `<div class="empty-msg" style="padding:2rem 0;">Du er ikke påmeldt noen kommende vakter ennå.</div>`;
+  } else {
+    const byDate = {};
+    upcoming.forEach(s => { if (!byDate[s.date]) byDate[s.date] = []; byDate[s.date].push(s); });
+    Object.keys(byDate).sort().forEach(date => {
+      const isToday = date === fmtDate(new Date());
+      html += `<div class="day-section"><div class="day-header">${norDay(new Date(date+'T12:00:00'))}${isToday?'<span class="today-marker">I dag</span>':''}</div>`;
+      byDate[date].forEach(s => { html += shiftCard(s, false); });
+      html += `</div>`;
+    });
+  }
+  c.innerHTML = html;
+}
+
+async function renderLocation(loc, c) {
+  const weeks = getWeek();
+  const start = fmtDate(weeks[0]), end = fmtDate(weeks[6]);
+  const shifts = await fetchShifts(loc, start, end);
+  const locName = LOCS[loc].name;
+  let html = `<div class="page-header-row"><div class="page-header" style="margin-bottom:0;"><h1>${locName}</h1><p>Ukeoversikt og påmelding</p></div>`;
+  if (currentProfile.is_admin) html += `<button class="btn btn-gold" onclick="openShiftModal('${loc}')">+ Legg til vakt</button>`;
+  html += `</div>`;
+  html += `<div class="week-nav"><button class="week-btn" onclick="weekOffset--;showPage('${loc}')">‹</button><div class="week-label">${norDay(weeks[0]).split(' ').slice(1).join(' ')} – ${norDay(weeks[6]).split(' ').slice(1).join(' ')}</div><button class="week-btn" onclick="weekOffset++;showPage('${loc}')">›</button></div>`;
+
+  weeks.forEach(d => {
+    const ds = fmtDate(d);
+    const day = shifts.filter(s => s.date === ds);
+    const isToday = ds === fmtDate(new Date());
+    html += `<div class="day-section"><div class="day-header">${norDay(d)}${isToday?'<span class="today-marker">I dag</span>':''}</div>`;
+    if (!day.length) html += `<div class="empty-msg" style="padding:6px 0 10px;">Ingen vakter planlagt</div>`;
+    else day.forEach(s => { html += shiftCard(s, false); });
+    html += `</div>`;
+  });
+  c.innerHTML = html;
+}
+
+async function renderAdminShifts(c) {
+  const today = fmtDate(new Date());
+  const future = fmtDate(addDays(new Date(), 60));
+  const shifts = await fetchShifts(null, today, future);
+  let html = `<div class="page-header-row"><div class="page-header" style="margin-bottom:0;"><h1>Vaktplan</h1><p>Alle planlagte vakter</p></div><button class="btn btn-gold" onclick="openShiftModal()">+ Ny vakt</button></div>`;
+  if (!shifts.length) { html += `<div class="empty-msg" style="padding:2rem 0;">Ingen vakter planlagt. Klikk «+ Ny vakt» for å opprette.</div>`; }
+  else {
+    html += `<div class="table-wrap"><table class="admin-table"><thead><tr><th>Dato</th><th>Tid</th><th>Lokasjon</th><th>Rolle</th><th>Plasser</th><th></th></tr></thead><tbody>`;
+    shifts.sort((a,b)=>(a.date+a.start_time).localeCompare(b.date+b.start_time)).forEach(s => {
+      const filled = (s.signups||[]).filter(sg=>sg.status==='approved').length;
+      const loc = LOCS[s.location];
+      html += `<tr><td>${norDayShort(new Date(s.date+'T12:00:00'))}</td><td>${s.start_time.substring(0,5)}–${s.end_time.substring(0,5)}</td>
+        <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${loc.color};margin-right:6px;"></span>${loc.name}</td>
+        <td>${s.role}</td><td>${filled}/${s.slots}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="doDeleteShift('${s.id}')">Slett</button></td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+  c.innerHTML = html;
+}
+
+async function renderAdminApprovals(c) {
+  const pending = await fetchPendingSignups();
+  let html = `<div class="page-header"><h1>Godkjenninger</h1><p>Påmeldinger som venter på din godkjenning</p></div>`;
+  if (!pending.length) {
+    html += `<div class="empty-msg" style="padding:2rem 0;">Ingen ventende forespørsler. ✓</div>`;
+  } else {
+    html += `<div class="table-wrap"><table class="admin-table"><thead><tr><th>Ansatt</th><th>Vakt</th><th>Lokasjon</th><th>Dato</th><th></th></tr></thead><tbody>`;
+    pending.forEach(sg => {
+      const sh = sg.shifts;
+      html += `<tr>
+        <td><strong>${sg.profiles?.name || sg.profiles?.email || '?'}</strong></td>
+        <td>${sh.start_time.substring(0,5)}–${sh.end_time.substring(0,5)} · ${sh.role}</td>
+        <td>${LOCS[sh.location]?.name}</td>
+        <td>${norDayShort(new Date(sh.date+'T12:00:00'))}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-success btn-sm" onclick="doApprove('${sg.id}')">Godkjenn</button>
+          <button class="btn btn-danger btn-sm" onclick="doReject('${sg.id}')">Avslå</button>
+        </td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+  c.innerHTML = html;
+}
+
+async function renderAdminEmployees(c) {
+  const profiles = await fetchAllProfiles();
+  let html = `<div class="page-header"><h1>Ansatte</h1><p>Alle med tilgang til vaktplanen</p></div>`;
+  html += `<div class="table-wrap"><table class="admin-table"><thead><tr><th>Navn</th><th>E-post</th><th>Rolle</th></tr></thead><tbody>`;
+  profiles.forEach(p => {
+    html += `<tr><td><strong>${p.name || '–'}</strong></td><td style="color:var(--ink-muted);">${p.email}</td>
+      <td>${p.is_admin ? '<span class="status-pill pill-admin">Admin</span>' : '<span class="status-pill pill-approved">Ansatt</span>'}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+  html += `<div class="info-box" style="margin-top:1.25rem;">
+    <b>Gjøre noen til admin:</b> Gå til Supabase → Table Editor → profiles → finn personen og sett <code style="background:rgba(0,0,0,.08);padding:1px 4px;border-radius:3px;">is_admin = true</code>. Eller kjør:<br>
+    <code style="font-size:11px;">UPDATE public.profiles SET is_admin = true WHERE email = 'epost@eksempel.no';</code><br><br>
+    <b>Invitere nye ansatte:</b> Del lenken til denne siden. Alle som kjenner lenken kan logge inn — begrens til riktig e-postdomene i Supabase → Authentication → Settings → «Allowed email domains».
+  </div>`;
+  c.innerHTML = html;
+}
+
+// ─── SHIFT CARD ──────────────────────────────────────────────────────────────
+function shiftCard(s, showLoc) {
+  const approved = (s.signups||[]).filter(sg=>sg.status==='approved');
+  const pending = (s.signups||[]).filter(sg=>sg.status==='pending');
+  const isFull = approved.length >= s.slots;
+  const mySignup = (s.signups||[]).find(sg=>sg.user_id===currentProfile.id);
+
+  let badge = isFull
+    ? `<span class="full-badge">Full</span>`
+    : `<span class="open-badge">${s.slots - approved.length} ledig</span>`;
+
+  let people = '';
+  approved.forEach(sg => {
+    const name = sg.profiles?.name || '?';
+    const isMe = sg.user_id === currentProfile.id;
+    people += `<span class="${isMe?'chip-mine':'chip-approved'}">${name.split(' ')[0]}${isMe&&!currentProfile.is_admin?` <span onclick="doLeave('${s.id}')" style="cursor:pointer;opacity:.7;">×</span>`:''}</span>`;
+  });
+  pending.forEach(sg => {
+    const name = sg.profiles?.name || '?';
+    people += `<span class="chip-pending">${name.split(' ')[0]} (venter)</span>`;
+  });
+
+  let actions = '';
+  if (mySignup?.status === 'approved') {
+    actions = `<button class="btn btn-outline btn-sm" onclick="doLeave('${s.id}')">Meld av</button>`;
+  } else if (mySignup?.status === 'pending') {
+    actions = `<button class="btn btn-outline btn-sm" disabled>Venter...</button>`;
+  } else if (!isFull) {
+    actions = `<button class="btn btn-gold btn-sm" onclick="doSignupDirect('${s.id}')">Meld på</button>`;
+  }
+  if (currentProfile.is_admin) {
+    actions += ` <button class="btn btn-danger btn-sm" onclick="doDeleteShift('${s.id}')">Slett</button>`;
+  }
+
+  return `<div class="shift-card">
+    <div class="shift-time">${s.start_time.substring(0,5)}–${s.end_time.substring(0,5)}</div>
+    <div class="shift-info">
+      <div class="shift-role-row">
+        <span class="shift-role">${s.role}</span>
+        ${showLoc ? `<span class="loc-label">· ${LOCS[s.location]?.name}</span>` : ''}
+        ${badge}
+      </div>
+      <div class="shift-people">${people}</div>
+    </div>
+    <div class="shift-actions">${actions}</div>
+  </div>`;
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+const LOC_TIMES = {
+  soli:        { start: '13:00', end: '18:00' },
+  restaurant:  { start: '12:00', end: '16:00' },
+  fredrikstad: { start: '12:00', end: '18:00' }
+};
+
+// Generate time options every 30 min
+
+// Generate time options every 30 min
+function buildTimeOptions() {
+  const opts = [];
+  for (let h = 7; h <= 23; h++) {
+    ['00','30'].forEach(m => {
+      if (h === 23 && m === '30') return;
+      opts.push(`${String(h).padStart(2,'0')}:${m}`);
+    });
+  }
+  return opts;
+}
+
+function makeTimeSelect(id, val) {
+  const opts = buildTimeOptions();
+  return `<select id="${id}" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:12px;background:var(--warm-white);color:var(--ink);">${opts.map(t=>`<option value="${t}" ${t===val?'selected':''}>${t}</option>`).join('')}</select>`;
+}
+
+// Selected days: [{date, start, end}]
+let selectedDays = [];
+
+function getDefaultTimes(loc) {
+  const LOC_TIMES = {
+    soli:        { start: '13:00', end: '18:00' },
+    restaurant:  { start: '12:00', end: '16:00' },
+    fredrikstad: { start: '12:00', end: '18:00' }
+  };
+  return LOC_TIMES[loc] || { start: '12:00', end: '18:00' };
+}
+
+function updateModalTimes() {
+  // When location changes, update default times for all selected days
+  const loc = document.getElementById('m-location').value;
+  const { start, end } = getDefaultTimes(loc);
+  selectedDays.forEach(d => { d.start = start; d.end = end; });
+  renderDayPicker();
+}
+
+function renderDayPicker() {
+  const loc = document.getElementById('m-location').value;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const DAY_SHORT = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
+  const MON_SHORT = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+
+  // Show next 28 days as clickable buttons
+  const picker = document.getElementById('day-picker');
+  let html = '';
+  for (let i = 0; i < 28; i++) {
+    const d = addDays(today, i);
+    const ds = fmtDate(d);
+    const dayIdx = (d.getDay() + 6) % 7;
+    const isSelected = selectedDays.find(x => x.date === ds);
+    const isToday = i === 0;
+    html += `<button type="button" class="day-btn${isSelected?' selected':''}${isToday&&!isSelected?' today-btn':''}" onclick="toggleDay('${ds}','${loc}')">${DAY_SHORT[dayIdx]} ${d.getDate()}. ${MON_SHORT[d.getMonth()]}</button>`;
+  }
+  picker.innerHTML = html;
+
+  // Render per-day time rows
+  const list = document.getElementById('day-times-list');
+  if (selectedDays.length === 0) { list.innerHTML = ''; return; }
+  html = `<div style="margin-bottom:1rem;">`;
+  html += `<div style="font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Arbeidstider per dag</div>`;
+  selectedDays.forEach((d, i) => {
+    const dObj = new Date(d.date + 'T12:00:00');
+    const dayIdx = (dObj.getDay() + 6) % 7;
+    const label = `${DAY_SHORT[dayIdx]} ${dObj.getDate()}. ${MON_SHORT[dObj.getMonth()]}`;
+    html += `<div class="day-time-row">
+      <span class="day-time-label">${label}</span>
+      ${makeTimeSelect('dt-start-'+i, d.start)}
+      <span style="color:var(--ink-faint);font-size:12px;">–</span>
+      ${makeTimeSelect('dt-end-'+i, d.end)}
+    </div>`;
+  });
+  html += `</div>`;
+  list.innerHTML = html;
+}
+
+function toggleDay(date, loc) {
+  const idx = selectedDays.findIndex(x => x.date === date);
+  if (idx >= 0) {
+    selectedDays.splice(idx, 1);
+  } else {
+    const { start, end } = getDefaultTimes(loc);
+    selectedDays.push({ date, start, end });
+    selectedDays.sort((a,b) => a.date.localeCompare(b.date));
+  }
+  renderDayPicker();
+}
+
+function collectDayTimes() {
+  selectedDays.forEach((d, i) => {
+    const s = document.getElementById('dt-start-'+i);
+    const e = document.getElementById('dt-end-'+i);
+    if (s) d.start = s.value;
+    if (e) d.end = e.value;
+  });
+}
+
+let currentShiftType = 'jobb';
+
+function setShiftType(type) {
+  currentShiftType = type;
+  document.getElementById('type-jobb').classList.toggle('active', type === 'jobb');
+  document.getElementById('type-ferie').classList.toggle('active', type === 'ferie');
+  document.getElementById('type-opptatt').classList.toggle('active', type === 'opptatt');
+  const dimTimes = type === 'ferie' || type === 'opptatt';
+  document.getElementById('day-times-list').style.opacity = dimTimes ? '0.4' : '1';
+  document.getElementById('opptatt-desc-field').style.display = type === 'opptatt' ? 'block' : 'none';
+}
+
+let savedScrollY = 0;
+
+async function openShiftModalForDay(loc, date) {
+  savedScrollY = window.scrollY;
+  loadSavedNames();
+  modalNames = [];
+  currentShiftType = 'jobb';
+  setShiftType('jobb');
+  document.getElementById('m-opptatt-desc').value = '';
+  document.getElementById('m-location').value = loc;
+  const { start, end } = getDefaultTimes(loc);
+  selectedDays = [{ date, start, end }];
+  document.getElementById('shift-modal-error').style.display = 'none';
+  renderNameTags();
+  renderSavedNameChips();
+  renderDayPicker();
+  document.getElementById('m-name-input').value = '';
+  document.getElementById('name-suggestions').style.display = 'none';
+  document.getElementById('shift-modal').classList.add('open');
+  seedNamesFromProfiles();
+}
+
+async function openShiftModal(loc) {
+  savedScrollY = window.scrollY;
+  loadSavedNames();
+  modalNames = [];
+  currentShiftType = 'jobb';
+  setShiftType('jobb');
+  if (loc) document.getElementById('m-location').value = loc;
+  const locVal = document.getElementById('m-location').value;
+  const { start, end } = getDefaultTimes(locVal);
+  selectedDays = [{ date: fmtDate(new Date()), start, end }];
+  document.getElementById('shift-modal-error').style.display = 'none';
+  renderNameTags();
+  renderSavedNameChips();
+  renderDayPicker();
+  document.getElementById('m-name-input').value = '';
+  document.getElementById('name-suggestions').style.display = 'none';
+  document.getElementById('shift-modal').classList.add('open');
+  seedNamesFromProfiles();
+}
+
+// ─── NAME TAGS ───────────────────────────────────────────────────────────────
+let modalNames = []; // [{name, userId or null}]
+let savedNames = [];
+
+function loadSavedNames() {
+  try { savedNames = JSON.parse(localStorage.getItem('soli_names') || '[]'); } catch(e) { savedNames = []; }
+}
+
+function saveName(name) {
+  if (!savedNames.includes(name)) {
+    savedNames.unshift(name);
+    if (savedNames.length > 30) savedNames = savedNames.slice(0,30);
+    localStorage.setItem('soli_names', JSON.stringify(savedNames));
+  }
+}
+
+function renderNameTags() {
+  const wrap = document.getElementById('name-tags');
+  wrap.innerHTML = modalNames.map((n, i) =>
+    `<div class="name-tag">${n.name}<span class="remove" onclick="removeName(${i})">×</span></div>`
+  ).join('');
+}
+
+function removeName(i) { modalNames.splice(i,1); renderNameTags(); }
+
+function addNameFromInput() {
+  const input = document.getElementById('m-name-input');
+  const val = input.value.trim();
+  if (!val) return;
+  if (!modalNames.find(n => n.name.toLowerCase() === val.toLowerCase())) {
+    modalNames.push({ name: val, userId: null });
+    saveName(val);
+    renderNameTags();
+    renderSavedNameChips();
+  }
+  input.value = '';
+  document.getElementById('name-suggestions').style.display = 'none';
+}
+
+function handleNameKey(e) {
+  if (e.key === 'Enter') { e.preventDefault(); addNameFromInput(); }
+}
+
+function showNameSuggestions() {
+  const val = document.getElementById('m-name-input').value.trim().toLowerCase();
+  const box = document.getElementById('name-suggestions');
+  if (!val) { box.style.display = 'none'; return; }
+  const matches = savedNames.filter(n => n.toLowerCase().includes(val) && !modalNames.find(m => m.name.toLowerCase() === n.toLowerCase()));
+  if (!matches.length) { box.style.display = 'none'; return; }
+  box.innerHTML = matches.map(n => `<div class="suggestion-item" onclick="pickSuggestion('${n.replace(/'/g,"\\'")}')">+ ${n}</div>`).join('');
+  box.style.display = 'block';
+}
+
+function pickSuggestion(name) {
+  if (!modalNames.find(n => n.name.toLowerCase() === name.toLowerCase())) {
+    modalNames.push({ name, userId: null });
+    renderNameTags();
+  }
+  document.getElementById('m-name-input').value = '';
+  document.getElementById('name-suggestions').style.display = 'none';
+}
+
+function renderSavedNameChips() {
+  loadSavedNames();
+  const box = document.getElementById('saved-name-chips');
+  if (!box) return;
+  const names = savedNames.filter(n => n !== 'Fri');
+  if (!names.length) { box.innerHTML = ''; return; }
+  box.innerHTML = names.map(n =>
+    `<button type="button" class="name-chip-btn${modalNames.find(m=>m.name===n)?' selected':''}" onclick="toggleSavedName('${n.replace(/'/g,"\\'")}') ">${n}</button>`
+  ).join('');
+}
+
+function toggleSavedName(name) {
+  const idx = modalNames.findIndex(n => n.name === name);
+  if (idx >= 0) {
+    modalNames.splice(idx, 1);
+  } else {
+    modalNames.push({ name, userId: null });
+    saveName(name);
+  }
+  renderNameTags();
+  renderSavedNameChips();
+}
+async function seedNamesFromProfiles() {
+  const profiles = await fetchAllProfiles();
+  profiles.forEach(p => { if (p.name) saveName(p.name.split(' ')[0]); });
+  renderSavedNameChips();
+}
+
+// ─── EVENTS ──────────────────────────────────────────────────────────────────
+async function fetchEvents(startDate, endDate) {
+  const { data, error } = await sb.from('events').select('*').gte('date', startDate).lte('date', endDate).order('created_at');
+  if (error) return [];
+  return data || [];
+}
+
+let pendingEventLoc = null, pendingEventDate = null;
+
+async function saveEvent() {
+  const title = document.getElementById('ev-title').value.trim();
+  const location = document.getElementById('ev-location').value;
+  const date = document.getElementById('ev-date').value;
+  const start_time = document.getElementById('ev-start').value || null;
+  const end_time = document.getElementById('ev-end').value || null;
+  const err = document.getElementById('event-modal-error');
+  if (!title) { showErr(err, 'Skriv inn en tittel'); return; }
+  if (!date) { showErr(err, 'Velg dato'); return; }
+  err.style.display = 'none';
+  const { error } = await sb.from('events').insert({ location, date, title, start_time, end_time, created_by: currentProfile.id });
+  if (error) { showErr(err, 'Feil: ' + error.message); return; }
+  document.getElementById('event-modal').classList.remove('open');
+  toast('Hendelse lagt til!');
+  showPage(currentPage, savedScrollY);
+}
+
+function editEvent(ev) {
+  const opts = buildTimeOptions();
+  const timeOpts = opts.map(t => `<option value="${t}">${t}</option>`).join('');
+  const blankStart = `<option value="">Hele dagen</option>`;
+  const blankEnd = `<option value="">–</option>`;
+
+  document.getElementById('edit-ev-id').value = ev.id;
+  document.getElementById('edit-ev-date').value = ev.date;
+  document.getElementById('edit-ev-location').value = ev.location;
+  document.getElementById('edit-ev-title').value = ev.title;
+  document.getElementById('edit-ev-start').innerHTML = blankStart + timeOpts;
+  document.getElementById('edit-ev-end').innerHTML = blankEnd + timeOpts;
+  if (ev.start_time) document.getElementById('edit-ev-start').value = ev.start_time.substring(0,5);
+  if (ev.end_time) document.getElementById('edit-ev-end').value = ev.end_time.substring(0,5);
+  document.getElementById('edit-event-error').style.display = 'none';
+  document.getElementById('edit-event-modal').classList.add('open');
+  setTimeout(() => document.getElementById('edit-ev-title').focus(), 150);
+}
+
+async function updateEvent() {
+  const id = document.getElementById('edit-ev-id').value;
+  const title = document.getElementById('edit-ev-title').value.trim();
+  const location = document.getElementById('edit-ev-location').value;
+  const date = document.getElementById('edit-ev-date').value;
+  const start_time = document.getElementById('edit-ev-start').value || null;
+  const end_time = document.getElementById('edit-ev-end').value || null;
+  const err = document.getElementById('edit-event-error');
+  if (!title) { showErr(err, 'Skriv inn en tittel'); return; }
+  err.style.display = 'none';
+  const { error } = await sb.from('events').update({ title, location, date, start_time, end_time }).eq('id', id);
+  if (error) { showErr(err, 'Feil: ' + error.message); return; }
+  document.getElementById('edit-event-modal').classList.remove('open');
+  toast('Hendelse oppdatert!');
+  showPage(currentPage, savedScrollY);
+}
+
+function deleteEventFromEdit() {
+  const id = document.getElementById('edit-ev-id').value;
+  document.getElementById('edit-event-modal').classList.remove('open');
+  deleteEvent(id);
+}
+
+async function deleteEvent(eventId) { savedScrollY = window.scrollY;
+  const { error } = await sb.from('events').delete().eq('id', eventId);
+  if (error) { toast('Feil: ' + error.message); return; }
+  toast('Hendelse slettet');
+  showPage(currentPage, savedScrollY);
+}
+
+// Day click — go straight to shift modal
+function openDayModal(loc, date) {
+  openShiftModalForDay(loc, date);
+}
+
+function populateEventTimes() {
+  const opts = buildTimeOptions();
+  const startSel = document.getElementById('ev-start');
+  const endSel = document.getElementById('ev-end');
+  const timeOpts = opts.map(t => `<option value="${t}">${t}</option>`).join('');
+  startSel.innerHTML = `<option value="">Hele dagen</option>` + timeOpts;
+  endSel.innerHTML = `<option value="">–</option>` + timeOpts;
+}
+
+function switchToEvent() {
+  const loc = document.getElementById('m-location').value;
+  const date = selectedDays.length > 0 ? selectedDays[0].date : fmtDate(new Date());
+  closeModal();
+  document.getElementById('ev-location').value = loc;
+  document.getElementById('ev-date').value = date;
+  document.getElementById('ev-title').value = '';
+  document.getElementById('event-modal-error').style.display = 'none';
+  populateEventTimes();
+  document.getElementById('event-modal').classList.add('open');
+  setTimeout(() => document.getElementById('ev-title').focus(), 150);
+}
+
+function chooseVakt() {
+  document.getElementById('day-action-modal').classList.remove('open');
+  openShiftModalForDay(pendingDayLoc, pendingDayDate);
+}
+
+function chooseHendelse() {
+  document.getElementById('day-action-modal').classList.remove('open');
+  document.getElementById('ev-location').value = pendingDayLoc || 'soli';
+  document.getElementById('ev-date').value = pendingDayDate || fmtDate(new Date());
+  document.getElementById('ev-title').value = '';
+  document.getElementById('event-modal-error').style.display = 'none';
+  populateEventTimes();
+  document.getElementById('event-modal').classList.add('open');
+  setTimeout(() => document.getElementById('ev-title').focus(), 150);
+}
+
+// ─── DELETE ──────────────────────────────────────────────────────────────────
+let pendingDeleteId = null;
+
+function promptDelete(shiftId) {
+  pendingDeleteId = shiftId;
+  document.getElementById('delete-modal').classList.add('open');
+}
+
+async function confirmDelete() {
+  if (!pendingDeleteId) return;
+  await doDeleteShift(pendingDeleteId);
+  pendingDeleteId = null;
+  document.getElementById('delete-modal').classList.remove('open');
+}
+
+function closeModal() {
+  document.getElementById('shift-modal').classList.remove('open');
+  document.getElementById('name-suggestions').style.display = 'none';
+  setTimeout(() => window.scrollTo({ top: savedScrollY, behavior: 'instant' }), 50);
+}
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-backdrop')) {
+    e.target.classList.remove('open');
+    document.getElementById('name-suggestions').style.display = 'none';
+    setTimeout(() => window.scrollTo({ top: savedScrollY, behavior: 'instant' }), 50);
+  }
+});
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const DAYS_NO = ['Søndag','Mandag','Tirsdag','Onsdag','Torsdag','Fredag','Lørdag'];
+const MONTHS_NO = ['januar','februar','mars','april','mai','juni','juli','august','september','oktober','november','desember'];
+const MONTHS_SHORT = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+
+function norDay(d) { return `${DAYS_NO[d.getDay()]} ${d.getDate()}. ${MONTHS_NO[d.getMonth()]}`; }
+function norDayShort(d) { return `${DAYS_NO[d.getDay()].substring(0,3)} ${d.getDate()}. ${MONTHS_SHORT[d.getMonth()]}`; }
+function fmtDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+
+function getWeek() {
+  const start = new Date();
+  const day = start.getDay() || 7;
+  start.setDate(start.getDate() - day + 1 + weekOffset * 7);
+  return Array.from({length:7}, (_,i) => addDays(start,i));
+}
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(name + '-screen').classList.add('active');
+}
+
+function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─── BOOT ────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--ink);}
+.btn-outline:hover{border-color:var(--gold);}
+.btn-gold{background:var(--gold);color:white;}
+.btn-gold:not(:disabled):hover{background:#8E6E44;}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.btn-danger{background:var(--red-light);color:var(--red);border:1px solid #D4AAAA;}
+.btn-danger:hover{background:#EDDADA;}
+.btn-success{background:var(--sage-light);color:var(--sage);border:1px solid #A8C8B4;}
+.btn-success:hover{background:#D8EBE0;}
+.divider{border:none;border-top:1px solid var(--border);margin:1.5rem 0;}
+.error-msg{background:var(--red-light);border:1px solid #D4AAAA;color:var(--red);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:1rem;display:none;}
+
+/* SETUP SCREEN */
+.setup-steps{display:flex;gap:8px;margin-bottom:2rem;}
+.setup-step{flex:1;height:3px;background:var(--border);border-radius:2px;transition:background .3s;}
+.setup-step.done{background:var(--gold);}
+.code-block{background:#1C1916;color:#F0E8DC;padding:1rem;border-radius:8px;font-family:monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;margin-bottom:.75rem;}
+.copy-btn{width:100%;padding:8px;background:var(--cream);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font);transition:all .15s;}
+.copy-btn:hover{border-color:var(--gold);}
+.info-box{background:var(--gold-light);border:1px solid var(--gold-border);border-radius:10px;padding:1rem;font-size:13px;line-height:1.6;color:#6B4E2A;margin-top:1rem;}
+.info-box b{color:var(--gold);}
+
+/* MAGIC LINK */
+.magic-icon{font-size:3rem;text-align:center;margin-bottom:1rem;}
+
+/* TOPBAR */
+.topbar{background:var(--warm-white);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;}
+.topbar-logo{font-family:var(--font);font-size:1.4rem;font-weight:500;letter-spacing:.03em;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.user-chip{background:var(--gold-light);color:var(--gold);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;}
+.admin-badge{background:var(--ink);color:white;padding:3px 8px;border-radius:4px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;}
+
+/* LAYOUT */
+#app-screen{flex-direction:column;}
+.main-layout{display:flex;flex:1;}
+.sidebar{width:200px;background:var(--warm-white);border-right:1px solid var(--border);padding:1.5rem 0;flex-shrink:0;}
+.sidebar-section{padding:0 1rem;margin-bottom:1.5rem;}
+.sidebar-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);padding:0 .5rem;margin-bottom:.5rem;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--ink-muted);transition:all .15s;margin-bottom:2px;}
+.nav-item:hover{background:var(--cream);color:var(--ink);}
+.nav-item.active{background:var(--gold-light);color:var(--gold);font-weight:500;}
+.nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.nav-badge{margin-left:auto;background:var(--gold);color:white;border-radius:10px;padding:1px 7px;font-size:11px;}
+
+/* CONTENT */
+.content{flex:1;padding:2rem;overflow-y:auto;max-width:900px;}
+.page-header{margin-bottom:2rem;}
+.page-header h1{font-family:var(--font);font-size:2rem;font-weight:500;}
+.page-header p{color:var(--ink-muted);margin-top:4px;}
+.page-header-row{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem;}
+
+/* WEEK NAV */
+.week-nav{display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;}
+.week-label{font-weight:500;font-size:15px;flex:1;}
+.week-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .15s;line-height:1;}
+.week-btn:hover{border-color:var(--gold);}
+
+/* SHIFTS */
+.day-section{margin-bottom:1.5rem;}
+.day-header{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.today-marker{background:var(--gold);color:white;padding:1px 6px;border-radius:4px;font-size:10px;}
+.shift-card{background:var(--warm-white);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;transition:border-color .15s;}
+.shift-card:hover{border-color:var(--gold-border);}
+.shift-time{font-family:var(--font);font-size:1.1rem;font-weight:500;min-width:90px;padding-top:1px;}
+.shift-info{flex:1;}
+.shift-role-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;}
+.shift-role{font-size:13px;font-weight:500;}
+.loc-label{font-size:11px;color:var(--ink-muted);}
+.open-badge{background:#FEF3E8;color:#B87333;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500;}
+.full-badge{background:var(--sage-light);color:var(--sage);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500;}
+.shift-people{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+.chip-approved{background:var(--sage-light);color:var(--sage);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500;}
+.chip-pending{background:var(--gold-light);color:var(--gold);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500;}
+.chip-mine{background:var(--purple-light);color:var(--purple);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500;}
+.shift-actions{display:flex;gap:6px;align-items:center;flex-shrink:0;}
+
+/* TODAY */
+.today-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:2rem;}
+.today-card{background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:1.25rem;}
+.today-card h4{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.75rem;}
+.today-card .loc-name{font-family:var(--font);font-size:1.2rem;font-weight:500;margin-bottom:.5rem;}
+.worker-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.worker-row:last-child{border-bottom:none;}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--gold-light);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;}
+.empty-msg{color:var(--ink-faint);font-size:13px;font-style:italic;}
+
+/* ADMIN TABLE */
+.table-wrap{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--warm-white);}
+.admin-table{width:100%;border-collapse:collapse;}
+.admin-table th{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:10px 14px;background:var(--cream);border-bottom:1px solid var(--border);}
+.admin-table td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+.admin-table tr:last-child td{border-bottom:none;}
+.admin-table tr:hover td{background:var(--cream);}
+.status-pill{padding:3px 9px;border-radius:12px;font-size:11px;font-weight:500;}
+.pill-approved{background:var(--sage-light);color:var(--sage);}
+.pill-pending{background:var(--gold-light);color:var(--gold);}
+.pill-admin{background:var(--ink);color:white;}
+
+/* CALENDAR */
+.cal-wrap{margin-bottom:2.5rem;}
+.cal-loc-header{display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding-bottom:10px;border-bottom:2px solid var(--border);}
+.cal-loc-title{font-family:var(--font);font-size:1.6rem;font-weight:500;}
+.cal-week-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:1.5rem 0 .5rem;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-day{background:var(--warm-white);border:1px solid var(--border);border-radius:8px;padding:8px;min-height:90px;cursor:pointer;transition:border-color .15s,background .15s;}
+.cal-day:hover{border-color:var(--gold);background:#FFFDF9;}
+.cal-day.today{border-color:var(--gold);background:var(--gold-light);}
+.cal-day.past{opacity:.5;cursor:default;}
+.cal-day.past:hover{border-color:var(--border);background:var(--warm-white);}
+.cal-day-name{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:2px;}
+.cal-day-num{font-family:var(--font);font-size:1.2rem;font-weight:500;margin-bottom:6px;line-height:1;}
+.cal-day.today .cal-day-num{color:var(--gold);}
+.cal-person{background:var(--sage-light);color:var(--sage);border-radius:4px;padding:3px 5px;font-size:10px;font-weight:500;margin-bottom:3px;line-height:1.3;}
+.cal-person .cal-person-name{font-weight:600;}
+.cal-person .cal-person-time{opacity:.8;font-size:9px;}
+.cal-add-hint{color:var(--ink-faint);font-size:10px;font-style:italic;margin-top:2px;}
+
+.day-btn{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--cream);font-size:12px;cursor:pointer;transition:all .15s;font-family:var(--font);color:var(--ink-muted);}
+.day-btn.selected{background:var(--gold);color:white;border-color:var(--gold);}
+.day-btn.today-btn{border-color:var(--gold);color:var(--gold);}
+.day-time-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--cream);border-radius:8px;margin-bottom:6px;font-size:13px;}
+.day-time-label{min-width:80px;font-weight:400;color:var(--ink-muted);}
+.day-time-row select{flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:12px;background:var(--warm-white);color:var(--ink);}
+
+.cal-day.all-day-event{background:#F2D4C2;border-color:#D4946A;}
+.cal-day.all-day-event:hover{background:#ECC8B0;border-color:#C47850;}
+.cal-day.today.all-day-event{background:#ECC0A0;border-color:var(--gold);}
+.cal-day.past.all-day-event{background:#F2D4C2;}
+color:#A84A10;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:3px;}
+.cal-event-title{flex:1;font-weight:500;}
+.type-btn{padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--cream);font-size:13px;cursor:pointer;font-family:var(--font);color:var(--ink-muted);transition:all .15s;}
+.type-btn.active{background:var(--ink);color:white;border-color:var(--ink);}
+#type-jobb.active{background:var(--sage);border-color:var(--sage);color:white;}
+#type-ferie.active{background:var(--red);border-color:var(--red);color:white;}
+#type-opptatt.active{background:#6B5A8A;border-color:#6B5A8A;color:white;}
+border-radius:20px;border:1px solid var(--border);background:var(--cream);font-size:12px;cursor:pointer;transition:all .15s;font-family:var(--font);color:var(--ink-muted);}
+.name-chip-btn:hover{border-color:var(--gold);color:var(--ink);}
+.name-chip-btn.selected{background:var(--sage-light);color:var(--sage);border-color:#A8C8B4;font-weight:500;}
+.name-chip-btn.fri-btn{border-color:#D4B896;color:var(--gold);}
+.name-chip-btn.fri-btn.selected{background:var(--gold-light);color:var(--gold);border-color:var(--gold);}
+color:var(--sage);border-radius:20px;padding:4px 10px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:5px;}
+.name-tag .remove{cursor:pointer;opacity:.6;font-size:15px;line-height:1;}
+.name-tag .remove:hover{opacity:1;}
+.suggestion-item{padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);}
+.suggestion-item:last-child{border-bottom:none;}
+.suggestion-item:hover{background:var(--cream);}
+
+
+.spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:200px;gap:1rem;color:var(--ink-muted);font-size:13px;}
+
+/* MODAL */
+.modal-backdrop{position:fixed;inset:0;background:rgba(28,25,22,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:1rem;}
+.modal-backdrop.open{display:flex;}
+.modal{background:var(--warm-white);border-radius:16px;padding:2rem;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;}
+.modal h3{font-family:var(--font);font-size:1.4rem;font-weight:500;margin-bottom:1.5rem;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem;}
+
+/* TOAST */
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--ink);color:white;padding:12px 20px;border-radius:10px;font-size:13px;z-index:500;transform:translateY(100px);opacity:0;transition:all .3s;pointer-events:none;max-width:300px;}
+.toast.show{transform:translateY(0);opacity:1;}
+
+@media(max-width:640px){
   .sidebar{display:none;}
   .content{padding:1rem;}
   .card{padding:1.5rem;}

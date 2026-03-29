@@ -341,60 +341,31 @@ create or replace trigger on_auth_user_created
   </div>
 </div>
 
-<!-- ACCESS CODE SCREEN -->
+<!-- ACCESS SCREEN -->
 <div id="access-screen" class="screen active center-wrap">
   <div class="logo">Soli Brug</div>
   <div class="logo-sub">Vaktplanlegging</div>
   <div class="card">
-    <h2>Velkommen</h2>
-    <p>Skriv inn tilgangskoden for å fortsette.</p>
-    <div id="access-error" class="error-msg"></div>
-    <div class="field">
-      <label>Tilgangskode</label>
-      <input type="password" id="access-code" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkAccessCode()" />
-    </div>
-    <button class="btn btn-primary" onclick="checkAccessCode()">Fortsett →</button>
-  </div>
-</div>
-
-<!-- LOGIN SCREEN -->
-<div id="login-screen" class="screen center-wrap">
-  <div class="logo">Soli Brug</div>
-  <div class="logo-sub">Vaktplanlegging</div>
-  <div class="card">
-    <div id="login-form">
-      <h2>Logg inn</h2>
-      <p>Skriv inn din e-postadresse for å motta en innloggingslenke.</p>
-      <div id="login-error" class="error-msg"></div>
+    <div id="access-step-1">
+      <h2>Velkommen</h2>
+      <p>Skriv inn tilgangskoden for å fortsette.</p>
+      <div id="access-error" class="error-msg"></div>
       <div class="field">
-        <label>E-postadresse</label>
-        <input type="email" id="login-email" placeholder="navn@eksempel.no" onkeydown="if(event.key==='Enter')sendMagicLink()" />
+        <label>Tilgangskode</label>
+        <input type="password" id="access-code" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkAccessCode()" />
       </div>
-      <button class="btn btn-primary" id="login-btn" onclick="sendMagicLink()">Send innloggingslenke →</button>
-      <button class="btn btn-outline btn-sm" onclick="resetSetup()" style="margin-top:.75rem;width:100%;font-size:11px;color:var(--ink-faint);">⚙ Endre oppsett</button>
+      <button class="btn btn-primary" onclick="checkAccessCode()">Fortsett →</button>
     </div>
-    <div id="magic-sent" style="display:none;text-align:center;">
-      <div class="magic-icon">✉️</div>
-      <h2>Sjekk e-posten din</h2>
-      <p>En innloggingslenke er sendt til <strong id="sent-email"></strong>.<br>Lenken er gyldig i 15 minutter.</p>
-      <hr class="divider">
-      <button class="btn btn-outline" onclick="document.getElementById('magic-sent').style.display='none';document.getElementById('login-form').style.display='block';" style="width:100%;margin-top:.5rem;">← Send ny lenke</button>
+    <div id="access-step-2" style="display:none;">
+      <h2>Hva heter du?</h2>
+      <p>Skriv inn ditt fornavn slik det vises i vaktplanen.</p>
+      <div id="name-error" class="error-msg"></div>
+      <div class="field">
+        <label>Navn</label>
+        <input type="text" id="access-name" placeholder="Fornavn" onkeydown="if(event.key==='Enter')submitName()" />
+      </div>
+      <button class="btn btn-primary" onclick="submitName()">Kom i gang →</button>
     </div>
-  </div>
-</div>
-
-<!-- PROFILE SETUP SCREEN -->
-<div id="profile-screen" class="screen center-wrap">
-  <div class="logo">Soli Brug</div>
-  <div class="logo-sub">Fullfør profilen din</div>
-  <div class="card">
-    <h2>Hei! 👋</h2>
-    <p>Skriv inn ditt fulle navn slik det vil vises på vaktoversikten.</p>
-    <div class="field">
-      <label>Fullt navn</label>
-      <input type="text" id="profile-name" placeholder="Fornavn Etternavn" onkeydown="if(event.key==='Enter')saveProfile()" />
-    </div>
-    <button class="btn btn-primary" id="profile-btn" onclick="saveProfile()">Kom i gang →</button>
   </div>
 </div>
 
@@ -405,7 +376,7 @@ create or replace trigger on_auth_user_created
     <div class="topbar-right">
       <span class="user-chip" id="user-chip"></span>
       <span class="admin-badge" id="admin-badge" style="display:none;">Admin</span>
-      <button class="btn btn-outline btn-sm" onclick="doLogout()">Logg ut</button>
+      <button class="btn btn-outline btn-sm" onclick="doLogout()">Bytt navn</button>
     </div>
   </div>
   <div class="main-layout">
@@ -601,111 +572,74 @@ function checkAccessCode() {
   const err = document.getElementById('access-error');
   if (code === 'SoliBrug') {
     localStorage.setItem('soli_access', '1');
-    showScreen('login');
-    setTimeout(() => document.getElementById('login-email').focus(), 100);
+    document.getElementById('access-step-1').style.display = 'none';
+    document.getElementById('access-step-2').style.display = 'block';
+    setTimeout(() => document.getElementById('access-name').focus(), 100);
   } else {
     showErr(err, 'Feil kode. Prøv igjen.');
     document.getElementById('access-code').value = '';
   }
 }
 
+function submitName() {
+  const name = document.getElementById('access-name').value.trim();
+  const err = document.getElementById('name-error');
+  if (!name || name.length < 2) { showErr(err, 'Skriv inn ditt navn'); return; }
+  localStorage.setItem('soli_name', name);
+  currentProfile = { name, is_admin: false, id: name };
+  launchApp();
+}
+
 // ─── INIT ────────────────────────────────────────────────────────────────────
 async function init() {
   const url = 'https://qeftgujvmytbjtvtkkvn.supabase.co';
   const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlZnRndWp2bXl0Ymp0dnRra3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MjgwMjgsImV4cCI6MjA5MDEwNDAyOH0.rUBFLykrr3Gstz4SkDedB0M_VZEwgdUpLZj0r2DymoI';
-  localStorage.setItem('sb_url', url);
-  localStorage.setItem('sb_key', key);
   sb = createClient(url, key);
 
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) {
-      // Check if access code already entered
-      if (localStorage.getItem('soli_access') === '1') {
-        showScreen('login');
-      } else {
-        showScreen('access');
-        setTimeout(() => document.getElementById('access-code').focus(), 100);
-      }
-      return;
-    }
-    currentUser = session.user;
-    await afterLogin();
-  } catch(e) {
+  // Check if already logged in
+  const access = localStorage.getItem('soli_access');
+  const name = localStorage.getItem('soli_name');
+  if (access === '1' && name) {
+    currentProfile = { name, is_admin: false, id: name };
+    launchApp();
+  } else if (access === '1') {
+    document.getElementById('access-step-1').style.display = 'none';
+    document.getElementById('access-step-2').style.display = 'block';
     showScreen('access');
+    setTimeout(() => document.getElementById('access-name').focus(), 100);
+  } else {
+    showScreen('access');
+    setTimeout(() => document.getElementById('access-code').focus(), 100);
   }
-
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session) {
-      currentUser = session.user;
-      await afterLogin();
-    } else if (event === 'SIGNED_OUT') {
-      currentUser = null; currentProfile = null;
-      showScreen('login');
-    }
-  });
-}
-
-async function afterLogin() {
-  const { data, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-  if (error || !data) { showScreen('login'); return; }
-  currentProfile = data;
-  if (!currentProfile.name || currentProfile.name === currentProfile.email.split('@')[0]) {
-    document.getElementById('profile-name').value = '';
-    showScreen('profile');
-    return;
-  }
-  launchApp();
 }
 
 function launchApp() {
-  document.getElementById('user-chip').textContent = shortName(currentProfile.name);
-  document.getElementById('admin-badge').style.display = currentProfile.is_admin ? 'inline-flex' : 'none';
-  document.getElementById('admin-nav').style.display = currentProfile.is_admin ? 'block' : 'none';
+  document.getElementById('user-chip').textContent = currentProfile.name;
+  document.getElementById('admin-badge').style.display = 'none';
+  document.getElementById('admin-nav').style.display = 'none';
   showScreen('app');
   showPage('forside');
-  if (currentProfile.is_admin) refreshPendingCount();
+}
+
+function doLogout() {
+  localStorage.removeItem('soli_name');
+  currentProfile = null;
+  document.getElementById('access-step-1').style.display = 'none';
+  document.getElementById('access-step-2').style.display = 'block';
+  document.getElementById('access-name').value = '';
+  showScreen('access');
+  setTimeout(() => document.getElementById('access-name').focus(), 100);
 }
 
 function shortName(n) {
-  const parts = n.trim().split(' ');
+  const parts = (n||'').trim().split(' ');
   return parts.length >= 2 ? parts[0] + ' ' + parts[parts.length - 1][0] + '.' : parts[0];
 }
 
-// ─── AUTH ────────────────────────────────────────────────────────────────────
-async function sendMagicLink() {
-  const email = document.getElementById('login-email').value.trim();
-  const btn = document.getElementById('login-btn');
-  const err = document.getElementById('login-error');
-  if (!email || !email.includes('@')) { showErr(err, 'Skriv inn en gyldig e-postadresse'); return; }
-  err.style.display = 'none';
-  btn.disabled = true; btn.textContent = 'Sender...';
-  const { error } = await sb.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: window.location.href.split('?')[0].split('#')[0] }
-  });
-  btn.disabled = false; btn.textContent = 'Send innloggingslenke →';
-  if (error) { showErr(err, 'Feil: ' + error.message); return; }
-  document.getElementById('sent-email').textContent = email;
-  document.getElementById('login-form').style.display = 'none';
-  document.getElementById('magic-sent').style.display = 'block';
-}
-
-async function doLogout() {
-  await sb.auth.signOut();
-}
-
-async function saveProfile() {
-  const name = document.getElementById('profile-name').value.trim();
-  const btn = document.getElementById('profile-btn');
-  if (!name || name.length < 2) { toast('Skriv inn ditt fulle navn'); return; }
-  btn.disabled = true; btn.textContent = 'Lagrer...';
-  const { error } = await sb.from('profiles').update({ name }).eq('id', currentUser.id);
-  btn.disabled = false; btn.textContent = 'Kom i gang →';
-  if (error) { toast('Feil ved lagring: ' + error.message); return; }
-  currentProfile.name = name;
-  launchApp();
-}
+// ─── AUTH (unused but kept for setup) ────────────────────────────────────────
+async function sendMagicLink() {}
+async function saveProfile() {}
+async function afterLogin() {}
 
 // ─── SETUP ───────────────────────────────────────────────────────────────────
 let setupStep = 1;
@@ -792,11 +726,7 @@ async function fetchAllProfiles() {
   return data || [];
 }
 
-async function refreshPendingCount() {
-  const pending = await fetchPendingSignups();
-  const badge = document.getElementById('pending-badge');
-  if (badge) { badge.textContent = pending.length; badge.style.display = pending.length > 0 ? 'inline' : 'none'; }
-}
+async function refreshPendingCount() { /* no admin in this version */ }
 
 // ─── MUTATIONS ───────────────────────────────────────────────────────────────
 async function doSignup(shiftId) {

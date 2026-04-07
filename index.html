@@ -1049,11 +1049,8 @@ async function renderForside(c) {
     });
     const dayOfWeekIdx = (d.getDay() + 6) % 7;
 
-    const allDayEvents = dayEvents.filter(e => !e.start_time);
-    const timedEvents = dayEvents.filter(e => e.start_time);
-
-    // If there's an all-day event, the whole cell gets an orange background
-    const hasAllDay = allDayEvents.length > 0;
+    // All events color the whole cell
+    const hasAllDay = dayEvents.length > 0;
 
     let cls = 'cal-day';
     if (isToday) cls += ' today';
@@ -1065,22 +1062,13 @@ async function renderForside(c) {
     let inner = `<div class="cal-day-name" style="${hasAllDay?'opacity:.7;':''}">${DAY_SHORT[dayOfWeekIdx]}</div>`;
     inner += `<div class="cal-day-num" style="${hasAllDay?'opacity:.7;':''}">${d.getDate()}.</div>`;
 
-    // All-day events: show title prominently inside the colored cell
-    allDayEvents.forEach(ev => {
+    // All events shown the same way — title + time if present
+    dayEvents.forEach(ev => {
       window.eventsMap[ev.id] = ev;
-      inner += `<div style="font-size:10px;font-weight:500;color:#7A3010;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:2px;">
-        <span onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;flex:1;color:#6B3820;word-break:break-word;">${ev.title}</span>
+      const timeStr = ev.start_time ? ` · ${ev.start_time.substring(0,5)}${ev.end_time ? '–'+ev.end_time.substring(0,5) : ''}` : '';
+      inner += `<div style="font-size:10px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:2px;">
+        <span onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;flex:1;color:#6B3820;word-break:break-word;">${ev.title}${timeStr}</span>
         <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:12px;flex-shrink:0;color:#6B3820;">×</span>
-      </div>`;
-    });
-
-    // Timed events: still show as pills
-    timedEvents.forEach(ev => {
-      window.eventsMap[ev.id] = ev;
-      const timeStr = `${ev.start_time.substring(0,5)}${ev.end_time ? '–'+ev.end_time.substring(0,5) : ''}`;
-      inner += `<div class="cal-event">
-        <span class="cal-event-title" onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;">${ev.title} · ${timeStr}</span>
-        <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:13px;" title="Slett">×</span>
       </div>`;
     });
 

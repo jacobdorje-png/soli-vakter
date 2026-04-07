@@ -1622,7 +1622,7 @@ function renderSavedNameChips() {
   let html = '';
 
   for (const [group, names] of Object.entries(STAFF_GROUPS)) {
-    html += `<div style="width:100%;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px;margin-top:4px;">${group}</div>`;
+    html += `<div style="width:100%;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);font-weight:500;margin-bottom:5px;margin-top:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">${group}</div>`;
     html += names.map(n =>
       `<button type="button" class="name-chip-btn${modalNames.find(m=>m.name===n)?' selected':''}" onclick="toggleSavedName('${n.replace(/'/g,"\\'")}') ">${n}</button>`
     ).join('');

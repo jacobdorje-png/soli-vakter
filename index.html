@@ -542,11 +542,18 @@ create or replace trigger on_auth_user_created
     </div>
     <div class="field">
       <label>Sted</label>
-      <select id="ev-location">
+      <select id="ev-location" onchange="updateEvVisibility()">
         <option value="soli">Soli</option>
         <option value="restaurant">Fredrikstad</option>
         <option value="fredrikstad">Smia</option>
       </select>
+    </div>
+    <div class="field" id="ev-visibility-field">
+      <label>Vis på</label>
+      <div style="display:flex;gap:8px;">
+        <button type="button" id="ev-vis-one" class="type-btn active" onclick="setEvVisibility('one')">Kun dette stedet</button>
+        <button type="button" id="ev-vis-all" class="type-btn" onclick="setEvVisibility('all')">Alle steder</button>
+      </div>
     </div>
     <div class="field">
       <label>Tittel</label>
@@ -583,11 +590,18 @@ create or replace trigger on_auth_user_created
     </div>
     <div class="field">
       <label>Sted</label>
-      <select id="edit-ev-location">
+      <select id="edit-ev-location" onchange="updateEditEvVisibility()">
         <option value="soli">Soli</option>
         <option value="restaurant">Fredrikstad</option>
         <option value="fredrikstad">Smia</option>
       </select>
+    </div>
+    <div class="field" id="edit-ev-visibility-field">
+      <label>Vis på</label>
+      <div style="display:flex;gap:8px;">
+        <button type="button" id="edit-ev-vis-one" class="type-btn active" onclick="setEditEvVisibility('one')">Kun dette stedet</button>
+        <button type="button" id="edit-ev-vis-all" class="type-btn" onclick="setEditEvVisibility('all')">Alle steder</button>
+      </div>
     </div>
     <div class="field">
       <label>Tittel</label>
@@ -1041,10 +1055,13 @@ async function renderForside(c) {
     const dayShifts = shifts.filter(s => s.location === locKey && s.date === ds);
     const dayEvents = events.filter(e => {
       if (e.date !== ds) return false;
-      if (e.location === locKey) return true;
-      // Soli and Fredrikstad events show on all three locations
-      if (e.location !== 'fredrikstad') return true;
-      // Smia events only show on Smia
+      const locParts = e.location.split(':');
+      const baseLoc = locParts[0];
+      const isAll = locParts[1] === 'all';
+      if (baseLoc === locKey) return true;
+      // :all means show on all three locations
+      if (isAll) return true;
+      // Smia (fredrikstad) events only on Smia unless :all
       return false;
     });
     const dayOfWeekIdx = (d.getDay() + 6) % 7;
@@ -1721,9 +1738,33 @@ async function fetchEvents(startDate, endDate) {
 
 let pendingEventLoc = null, pendingEventDate = null;
 
+// ─── EVENT VISIBILITY ────────────────────────────────────────────────────────
+function setEvVisibility(vis) {
+  document.getElementById('ev-vis-one').classList.toggle('active', vis === 'one');
+  document.getElementById('ev-vis-all').classList.toggle('active', vis === 'all');
+}
+function getEvVisibility() {
+  return document.getElementById('ev-vis-all').classList.contains('active') ? 'all' : 'one';
+}
+function updateEvVisibility() {
+  const loc = document.getElementById('ev-location').value;
+  document.getElementById('ev-visibility-field').style.display = loc === 'fredrikstad' ? 'none' : 'block';
+}
+function setEditEvVisibility(vis) {
+  document.getElementById('edit-ev-vis-one').classList.toggle('active', vis === 'one');
+  document.getElementById('edit-ev-vis-all').classList.toggle('active', vis === 'all');
+}
+function getEditEvVisibility() {
+  return document.getElementById('edit-ev-vis-all').classList.contains('active') ? 'all' : 'one';
+}
+function updateEditEvVisibility() {
+  const loc = document.getElementById('edit-ev-location').value;
+  document.getElementById('edit-ev-visibility-field').style.display = loc === 'fredrikstad' ? 'none' : 'block';
+}
+
 async function saveEvent() {
   const title = document.getElementById('ev-title').value.trim();
-  const location = document.getElementById('ev-location').value;
+  let location = document.getElementById('ev-location').value;
   const date = document.getElementById('ev-date').value;
   const start_time = document.getElementById('ev-start').value || null;
   const end_time = document.getElementById('ev-end').value || null;
@@ -1731,6 +1772,7 @@ async function saveEvent() {
   if (!title) { showErr(err, 'Skriv inn en tittel'); return; }
   if (!date) { showErr(err, 'Velg dato'); return; }
   err.style.display = 'none';
+  if (getEvVisibility() === 'all' && location !== 'fredrikstad') location = location + ':all';
   const { error } = await sb.from('events').insert({ location, date, title, start_time, end_time });
   if (error) { showErr(err, 'Feil: ' + error.message); return; }
   document.getElementById('event-modal').classList.remove('open');
@@ -1744,15 +1786,21 @@ function editEvent(ev) {
   if (!ev) { toast('Kan ikke redigere — prøv å laste siden på nytt'); return; }
   const opts = buildTimeOptions();
   const timeOpts = opts.map(t => `<option value="${t}">${t}</option>`).join('');
-  const blankStart = `<option value="">Hele dagen</option>`;
-  const blankEnd = `<option value="">–</option>`;
 
   document.getElementById('edit-ev-id').value = ev.id;
   document.getElementById('edit-ev-date').value = ev.date;
-  document.getElementById('edit-ev-location').value = ev.location;
+
+  // Parse stored location — might be 'soli:all'
+  const locParts = ev.location.split(':');
+  const baseLoc = locParts[0];
+  const isAll = locParts[1] === 'all';
+  document.getElementById('edit-ev-location').value = baseLoc;
+  updateEditEvVisibility();
+  setEditEvVisibility(isAll ? 'all' : 'one');
+
   document.getElementById('edit-ev-title').value = ev.title;
-  document.getElementById('edit-ev-start').innerHTML = blankStart + timeOpts;
-  document.getElementById('edit-ev-end').innerHTML = blankEnd + timeOpts;
+  document.getElementById('edit-ev-start').innerHTML = `<option value="">Hele dagen</option>` + timeOpts;
+  document.getElementById('edit-ev-end').innerHTML = `<option value="">–</option>` + timeOpts;
   if (ev.start_time) document.getElementById('edit-ev-start').value = ev.start_time.substring(0,5);
   if (ev.end_time) document.getElementById('edit-ev-end').value = ev.end_time.substring(0,5);
   document.getElementById('edit-event-error').style.display = 'none';
@@ -1763,13 +1811,14 @@ function editEvent(ev) {
 async function updateEvent() {
   const id = document.getElementById('edit-ev-id').value;
   const title = document.getElementById('edit-ev-title').value.trim();
-  const location = document.getElementById('edit-ev-location').value;
+  let location = document.getElementById('edit-ev-location').value;
   const date = document.getElementById('edit-ev-date').value;
   const start_time = document.getElementById('edit-ev-start').value || null;
   const end_time = document.getElementById('edit-ev-end').value || null;
   const err = document.getElementById('edit-event-error');
   if (!title) { showErr(err, 'Skriv inn en tittel'); return; }
   err.style.display = 'none';
+  if (getEditEvVisibility() === 'all' && location !== 'fredrikstad') location = location + ':all';
   const { error } = await sb.from('events').update({ title, location, date, start_time, end_time }).eq('id', id);
   if (error) { showErr(err, 'Feil: ' + error.message); return; }
   document.getElementById('edit-event-modal').classList.remove('open');
@@ -1812,6 +1861,8 @@ function switchToEvent() {
   document.getElementById('ev-date').value = date;
   document.getElementById('ev-title').value = '';
   document.getElementById('event-modal-error').style.display = 'none';
+  setEvVisibility('one');
+  updateEvVisibility();
   populateEventTimes();
   document.getElementById('event-modal').classList.add('open');
   setTimeout(() => document.getElementById('ev-title').focus(), 150);

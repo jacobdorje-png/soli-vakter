@@ -143,8 +143,8 @@ body{font-family:var(--font);font-weight:300;background:var(--cream);color:var(-
 .cal-day.today{border-color:var(--gold);background:var(--gold-light);}
 .cal-day.past{opacity:.5;cursor:default;}
 .cal-day.past:hover{border-color:var(--border);background:var(--warm-white);}
-.cal-day-name{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:2px;}
-.cal-day-num{font-family:var(--font);font-size:1.2rem;font-weight:500;margin-bottom:6px;line-height:1;}
+.cal-day-name{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:2px;font-weight:500;}
+.cal-day-num{font-family:var(--font);font-size:1.2rem;font-weight:500;margin-bottom:6px;line-height:1;color:var(--ink);}
 .cal-day.today .cal-day-num{color:var(--gold);}
 .cal-person{background:var(--sage-light);color:var(--sage);border-radius:4px;padding:3px 5px;font-size:10px;font-weight:500;margin-bottom:3px;line-height:1.3;}
 .cal-person .cal-person-name{font-weight:600;}
@@ -712,6 +712,9 @@ async function init() {
 }
 
 function launchApp() {
+  // Pre-seed all known staff names
+  loadSavedNames();
+  Object.values(STAFF_GROUPS).flat().forEach(n => saveName(n));
   document.getElementById('user-chip').textContent = currentProfile.name;
   document.getElementById('admin-badge').style.display = 'none';
   document.getElementById('admin-nav').style.display = 'none';
@@ -1542,6 +1545,8 @@ let savedNames = [];
 
 function loadSavedNames() {
   try { savedNames = JSON.parse(localStorage.getItem('soli_names') || '[]'); } catch(e) { savedNames = []; }
+  // Always ensure staff are in savedNames
+  Object.values(STAFF_GROUPS).flat().forEach(n => { if (!savedNames.includes(n)) savedNames.push(n); });
 }
 
 function saveName(name) {
@@ -1598,15 +1603,41 @@ function pickSuggestion(name) {
   document.getElementById('name-suggestions').style.display = 'none';
 }
 
+const STAFF_GROUPS = {
+  'Galleri': ['Jacob', 'Simen', 'Ole', 'Richard', 'Nina', 'Henrik'],
+  'Restaurant': ['Kristin', 'Emma']
+};
+
 function renderSavedNameChips() {
   loadSavedNames();
   const box = document.getElementById('saved-name-chips');
   if (!box) return;
-  const names = savedNames.filter(n => n !== 'Fri');
-  if (!names.length) { box.innerHTML = ''; return; }
-  box.innerHTML = names.map(n =>
-    `<button type="button" class="name-chip-btn${modalNames.find(m=>m.name===n)?' selected':''}" onclick="toggleSavedName('${n.replace(/'/g,"\\'")}') ">${n}</button>`
-  ).join('');
+
+  // Build all known staff names in order
+  const allStaff = Object.values(STAFF_GROUPS).flat();
+
+  // Extra names from savedNames not in any group
+  const extraNames = savedNames.filter(n => n !== 'Fri' && !allStaff.includes(n));
+
+  let html = '';
+
+  for (const [group, names] of Object.entries(STAFF_GROUPS)) {
+    html += `<div style="width:100%;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px;margin-top:4px;">${group}</div>`;
+    html += names.map(n =>
+      `<button type="button" class="name-chip-btn${modalNames.find(m=>m.name===n)?' selected':''}" onclick="toggleSavedName('${n.replace(/'/g,"\\'")}') ">${n}</button>`
+    ).join('');
+    html += `<div style="width:100%;height:6px;"></div>`;
+  }
+
+  // Extra names (added manually)
+  if (extraNames.length) {
+    html += `<div style="width:100%;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px;margin-top:4px;">Andre</div>`;
+    html += extraNames.map(n =>
+      `<button type="button" class="name-chip-btn${modalNames.find(m=>m.name===n)?' selected':''}" onclick="toggleSavedName('${n.replace(/'/g,"\\'")}') ">${n}</button>`
+    ).join('');
+  }
+
+  box.innerHTML = html;
 }
 
 function toggleSavedName(name) {

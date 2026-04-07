@@ -1707,7 +1707,7 @@ async function saveEvent() {
   if (!title) { showErr(err, 'Skriv inn en tittel'); return; }
   if (!date) { showErr(err, 'Velg dato'); return; }
   err.style.display = 'none';
-  const { error } = await sb.from('events').insert({ location, date, title, start_time, end_time, created_by: currentProfile.id });
+  const { error } = await sb.from('events').insert({ location, date, title, start_time, end_time });
   if (error) { showErr(err, 'Feil: ' + error.message); return; }
   document.getElementById('event-modal').classList.remove('open');
   toast('Hendelse lagt til!');

@@ -11,6 +11,9 @@
   --ink-faint: #B0ABA6; --gold: #A8865A; --gold-light: #F0E8DC; --gold-border: #D4B896;
   --sage: #4A7A5A; --sage-light: #E4EFE8; --red: #8B3A3A; --red-light: #F5EAEA;
   --border: #E8E2DA; --purple: #6B5A8A; --purple-light: #EDE8F5;
+  --teal: #2E7B8A; --teal-light: #DDF0F3; --teal-border: #A8D8DF;
+  --holiday: #C17A2A; --holiday-light: #FBF0E0; --holiday-border: #E8C48A;
+  --fellesferie: #5A6E9A; --fellesferie-light: #E8EDF8; --fellesferie-border: #B0BEDD;
   --font: 'proxima-nova', 'Nunito', sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -136,7 +139,7 @@ body{font-family:var(--font);font-weight:300;background:var(--cream);color:var(-
 .cal-wrap{margin-bottom:2.5rem;}
 .cal-loc-header{display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding-bottom:10px;border-bottom:2px solid var(--border);}
 .cal-loc-title{font-family:var(--font);font-size:1.6rem;font-weight:500;}
-.cal-week-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:1.5rem 0 .5rem;}
+.cal-week-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);font-weight:500;margin:1.5rem 0 .5rem;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
 .cal-day{background:var(--warm-white);border:1px solid var(--border);border-radius:8px;padding:8px;min-height:90px;cursor:pointer;transition:border-color .15s,background .15s;display:flex;flex-direction:column;}
 .cal-day:hover{border-color:var(--gold);background:#FFFDF9;}
@@ -163,6 +166,12 @@ body{font-family:var(--font);font-weight:300;background:var(--cream);color:var(-
 .cal-day.today.all-day-event{background:#ECC0A0;border-color:var(--gold);}
 .cal-day.past.all-day-event{background:#F2D4C2;}
 .cal-event{background:#FDE8D8;color:#A84A10;border-radius:4px;padding:3px 5px;font-size:10px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:3px;}
+.cal-day.holiday{background:var(--holiday-light);border-color:var(--holiday-border);}
+.cal-day.holiday .cal-day-num{color:var(--holiday);}
+.cal-day.fellesferie{background:var(--fellesferie-light);border-color:var(--fellesferie-border);}
+.cal-day.fellesferie .cal-day-num{color:var(--fellesferie);}
+.cal-group{background:var(--teal-light);color:var(--teal);border-radius:4px;padding:3px 5px;font-size:10px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:3px;border:1px solid var(--teal-border);}
+.cal-group-title{flex:1;font-weight:500;}
 .cal-event-title{flex:1;font-weight:500;}
 .type-btn{padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--cream);font-size:13px;cursor:pointer;font-family:var(--font);color:var(--ink-muted);transition:all .15s;}
 .type-btn.active{background:var(--ink);color:white;border-color:var(--ink);}
@@ -478,9 +487,12 @@ create or replace trigger on_auth_user_created
 <!-- ADD SHIFT MODAL -->
 <div class="modal-backdrop" id="shift-modal">
   <div class="modal" style="max-width:520px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:8px;">
       <h3 style="margin-bottom:0;">Legg til vakt</h3>
-      <button class="btn btn-outline btn-sm" onclick="switchToEvent()" style="font-size:12px;">+ Hendelse i stedet</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm" onclick="openGroupFromShift()" style="font-size:12px;color:var(--teal);border-color:var(--teal-border);">+ Gruppe</button>
+        <button class="btn btn-outline btn-sm" onclick="switchToEvent()" style="font-size:12px;">+ Hendelse</button>
+      </div>
     </div>
 
     <div class="field">
@@ -654,6 +666,88 @@ create or replace trigger on_auth_user_created
       <button class="btn btn-danger btn-sm" onclick="deleteEditShift()" style="margin-right:auto;">Slett</button>
       <button class="btn btn-outline" onclick="document.getElementById('edit-shift-modal').classList.remove('open')">Avbryt</button>
       <button class="btn btn-gold" onclick="saveEditShift()">Lagre</button>
+    </div>
+  </div>
+</div>
+
+<!-- GROUP MODAL -->
+<div class="modal-backdrop" id="group-modal">
+  <div class="modal" style="max-width:360px;">
+    <h3>Legg til gruppe</h3>
+    <div class="field">
+      <label>Dato</label>
+      <input type="date" id="grp-date" />
+    </div>
+    <div class="field">
+      <label>Sted</label>
+      <select id="grp-location">
+        <option value="soli">Soli</option>
+        <option value="restaurant">Fredrikstad</option>
+        <option value="fredrikstad">Smia</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Gruppenavn / beskrivelse <span style="color:var(--ink-faint);font-weight:300;">(valgfritt)</span></label>
+      <input type="text" id="grp-title" placeholder="f.eks. Skoleklasse, Bedriftstur..." />
+    </div>
+    <div class="field">
+      <label>Antall personer</label>
+      <input type="number" id="grp-count" value="10" min="1" max="500" style="max-width:120px;" />
+    </div>
+    <div class="field">
+      <label>Tidspunkt <span style="color:var(--ink-faint);font-weight:300;">(valgfritt)</span></label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="grp-start" style="flex:1;"></select>
+        <span style="color:var(--ink-faint);font-size:12px;">–</span>
+        <select id="grp-end" style="flex:1;"></select>
+      </div>
+    </div>
+    <div id="group-modal-error" class="error-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('group-modal').classList.remove('open')">Avbryt</button>
+      <button class="btn" style="background:var(--teal);color:white;" onclick="saveGroup()">Lagre gruppe</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT GROUP MODAL -->
+<div class="modal-backdrop" id="edit-group-modal">
+  <div class="modal" style="max-width:360px;">
+    <h3>Rediger gruppe</h3>
+    <input type="hidden" id="edit-grp-id" />
+    <div class="field">
+      <label>Dato</label>
+      <input type="date" id="edit-grp-date" />
+    </div>
+    <div class="field">
+      <label>Sted</label>
+      <select id="edit-grp-location">
+        <option value="soli">Soli</option>
+        <option value="restaurant">Fredrikstad</option>
+        <option value="fredrikstad">Smia</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Gruppenavn / beskrivelse</label>
+      <input type="text" id="edit-grp-title" placeholder="f.eks. Skoleklasse, Bedriftstur..." />
+    </div>
+    <div class="field">
+      <label>Antall personer</label>
+      <input type="number" id="edit-grp-count" min="1" max="500" style="max-width:120px;" />
+    </div>
+    <div class="field">
+      <label>Tidspunkt <span style="color:var(--ink-faint);font-weight:300;">(valgfritt)</span></label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="edit-grp-start" style="flex:1;"></select>
+        <span style="color:var(--ink-faint);font-size:12px;">–</span>
+        <select id="edit-grp-end" style="flex:1;"></select>
+      </div>
+    </div>
+    <div id="edit-group-error" class="error-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger btn-sm" onclick="deleteGroup(document.getElementById('edit-grp-id').value)" style="margin-right:auto;">Slett</button>
+      <button class="btn btn-outline" onclick="document.getElementById('edit-group-modal').classList.remove('open')">Avbryt</button>
+      <button class="btn" style="background:var(--teal);color:white;" onclick="updateGroup()">Lagre</button>
     </div>
   </div>
 </div>
@@ -1037,9 +1131,10 @@ async function renderForside(c) {
   const anyFull = Object.values(showFullYear).some(v => v);
   const fetchEnd = anyFull ? yearEnd : fourWeeksEnd;
 
-  const [shifts, events] = await Promise.all([
+  const [shifts, events, groups] = await Promise.all([
     fetchShifts(null, fmtDate(monday), fmtDate(fetchEnd)),
-    fetchEvents(fmtDate(monday), fmtDate(fetchEnd))
+    fetchEvents(fmtDate(monday), fmtDate(fetchEnd)),
+    fetchGroups(fmtDate(monday), fmtDate(fetchEnd))
   ]);
 
   const DAY_SHORT = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
@@ -1047,6 +1142,8 @@ async function renderForside(c) {
 
   window.eventsMap = {};
   events.forEach(e => { window.eventsMap[e.id] = e; });
+  window.groupsMap = {};
+  groups.forEach(g => { window.groupsMap[g.id] = g; });
 
   function calDay(d, locKey) {
     const ds = fmtDate(d);
@@ -1059,33 +1156,51 @@ async function renderForside(c) {
       const baseLoc = locParts[0];
       const isAll = locParts[1] === 'all';
       if (baseLoc === locKey) return true;
-      // :all means show on all three locations
       if (isAll) return true;
-      // Smia (fredrikstad) events only on Smia unless :all
       return false;
     });
+    const dayGroups = groups.filter(g => g.location === locKey && g.date === ds);
     const dayOfWeekIdx = (d.getDay() + 6) % 7;
-
-    // All events color the whole cell
-    const hasAllDay = dayEvents.length > 0;
+    const holiday = isHoliday(ds);
+    const fellesferie = isFellesferie(ds);
 
     let cls = 'cal-day';
     if (isToday) cls += ' today';
     if (isPast) cls += ' past';
-    if (hasAllDay) cls += ' all-day-event';
+    if (holiday) cls += ' holiday';
+    else if (fellesferie) cls += ' fellesferie';
+    else if (dayEvents.length > 0) cls += ' all-day-event';
 
     const clickHandler = isPast ? '' : `onclick="openDayModal('${locKey}','${ds}')"`;
 
-    let inner = `<div class="cal-day-name" style="${hasAllDay?'opacity:.7;':''}">${DAY_SHORT[dayOfWeekIdx]}</div>`;
-    inner += `<div class="cal-day-num" style="${hasAllDay?'opacity:.7;':''}">${d.getDate()}.</div>`;
+    let inner = `<div class="cal-day-name">${DAY_SHORT[dayOfWeekIdx]}</div>`;
+    inner += `<div class="cal-day-num">${d.getDate()}.</div>`;
 
-    // All events shown the same way — title + time if present
+    // Holiday label
+    if (holiday) {
+      inner += `<div style="font-size:9px;font-weight:500;color:var(--holiday);margin-bottom:3px;word-break:break-word;">${holidayName(ds)}</div>`;
+    } else if (fellesferie) {
+      inner += `<div style="font-size:9px;font-weight:500;color:var(--fellesferie);margin-bottom:3px;">Fellesferie</div>`;
+    }
+
+    // Events
     dayEvents.forEach(ev => {
       window.eventsMap[ev.id] = ev;
       const timeStr = ev.start_time ? ` · ${ev.start_time.substring(0,5)}${ev.end_time ? '–'+ev.end_time.substring(0,5) : ''}` : '';
       inner += `<div style="font-size:10px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:2px;">
         <span onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;flex:1;color:#6B3820;word-break:break-word;">${ev.title}${timeStr}</span>
         <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:12px;flex-shrink:0;color:#6B3820;">×</span>
+      </div>`;
+    });
+
+    // Groups
+    dayGroups.forEach(g => {
+      window.groupsMap[g.id] = g;
+      const timeStr = g.start_time ? ` ${g.start_time.substring(0,5)}${g.end_time ? '–'+g.end_time.substring(0,5) : ''}` : '';
+      const label = `👥 ${g.count}${g.title ? ' · '+g.title : ''}${timeStr}`;
+      inner += `<div class="cal-group">
+        <span class="cal-group-title" onclick="event.stopPropagation();editGroup(window.groupsMap['${g.id}'])" style="cursor:pointer;">${label}</span>
+        <span onclick="event.stopPropagation();deleteGroup('${g.id}')" style="cursor:pointer;opacity:.5;font-size:12px;flex-shrink:0;">×</span>
       </div>`;
     });
 
@@ -1836,6 +1951,110 @@ async function deleteEvent(eventId) { savedScrollY = window.scrollY;
   const { error } = await sb.from('events').delete().eq('id', eventId);
   if (error) { toast('Feil: ' + error.message); return; }
   toast('Hendelse slettet');
+  showPage(currentPage, savedScrollY);
+}
+
+// ─── HOLIDAYS & FELLESFERIE ──────────────────────────────────────────────────
+const HOLIDAYS_2025 = new Set(['2025-01-01','2025-04-17','2025-04-18','2025-04-20','2025-04-21','2025-05-01','2025-05-17','2025-05-29','2025-06-08','2025-06-09','2025-12-25','2025-12-26']);
+const HOLIDAYS_2026 = new Set(['2026-01-01','2026-04-02','2026-04-03','2026-04-05','2026-04-06','2026-05-01','2026-05-14','2026-05-17','2026-05-24','2026-05-25','2026-12-25','2026-12-26']);
+const HOLIDAY_NAMES = {
+  '01-01':'Nyttårsdag','04-17':'Skjærtorsdag','04-18':'Langfredag','04-20':'1. påskedag','04-21':'2. påskedag',
+  '04-02':'Skjærtorsdag','04-03':'Langfredag','04-05':'1. påskedag','04-06':'2. påskedag',
+  '05-01':'Arbeidernes dag','05-17':'Grunnlovsdag','05-29':'Kristi himmelfartsdag','06-08':'Kristi himmelfartsdag',
+  '05-14':'Kristi himmelfartsdag','05-24':'1. pinsedag','05-25':'2. pinsedag','06-09':'2. pinsedag',
+  '12-25':'1. juledag','12-26':'2. juledag'
+};
+function isHoliday(ds) { return HOLIDAYS_2025.has(ds) || HOLIDAYS_2026.has(ds); }
+function holidayName(ds) { return HOLIDAY_NAMES[ds.substring(5)] || 'Helligdag'; }
+function isFellesferie(ds) { return ds >= '2025-07-07' && ds <= '2025-08-01'; }
+
+// ─── GROUPS ──────────────────────────────────────────────────────────────────
+window.groupsMap = {};
+
+async function fetchGroups(startDate, endDate) {
+  const { data, error } = await sb.from('groups').select('*').gte('date', startDate).lte('date', endDate).order('created_at');
+  if (error) return [];
+  return data || [];
+}
+
+function openGroupFromShift() {
+  const loc = document.getElementById('m-location').value;
+  const date = selectedDays.length > 0 ? selectedDays[0].date : fmtDate(new Date());
+  closeModal();
+  openGroupModal(loc, date);
+}
+
+function openGroupModal(loc, date) {
+  savedScrollY = window.scrollY;
+  document.getElementById('grp-location').value = loc;
+  document.getElementById('grp-date').value = date;
+  document.getElementById('grp-title').value = '';
+  document.getElementById('grp-count').value = '10';
+  document.getElementById('group-modal-error').style.display = 'none';
+  const opts = buildTimeOptions();
+  const timeOpts = opts.map(t => `<option value="${t}">${t}</option>`).join('');
+  document.getElementById('grp-start').innerHTML = `<option value="">Velg tid</option>` + timeOpts;
+  document.getElementById('grp-end').innerHTML = `<option value="">–</option>` + timeOpts;
+  document.getElementById('group-modal').classList.add('open');
+}
+
+async function saveGroup() {
+  const location = document.getElementById('grp-location').value;
+  const date = document.getElementById('grp-date').value;
+  const title = document.getElementById('grp-title').value.trim();
+  const count = parseInt(document.getElementById('grp-count').value) || 1;
+  const start_time = document.getElementById('grp-start').value || null;
+  const end_time = document.getElementById('grp-end').value || null;
+  const err = document.getElementById('group-modal-error');
+  if (!date) { showErr(err, 'Velg dato'); return; }
+  err.style.display = 'none';
+  const { error } = await sb.from('groups').insert({ location, date, title, count, start_time, end_time });
+  if (error) { showErr(err, 'Feil: ' + error.message); return; }
+  document.getElementById('group-modal').classList.remove('open');
+  toast('Gruppe lagt til!');
+  showPage(currentPage, savedScrollY);
+}
+
+function editGroup(grp) {
+  if (!grp) return;
+  const opts = buildTimeOptions();
+  const timeOpts = opts.map(t => `<option value="${t}">${t}</option>`).join('');
+  document.getElementById('edit-grp-id').value = grp.id;
+  document.getElementById('edit-grp-location').value = grp.location;
+  document.getElementById('edit-grp-date').value = grp.date;
+  document.getElementById('edit-grp-title').value = grp.title || '';
+  document.getElementById('edit-grp-count').value = grp.count;
+  document.getElementById('edit-grp-start').innerHTML = `<option value="">Velg tid</option>` + timeOpts;
+  document.getElementById('edit-grp-end').innerHTML = `<option value="">–</option>` + timeOpts;
+  if (grp.start_time) document.getElementById('edit-grp-start').value = grp.start_time.substring(0,5);
+  if (grp.end_time) document.getElementById('edit-grp-end').value = grp.end_time.substring(0,5);
+  document.getElementById('edit-group-error').style.display = 'none';
+  document.getElementById('edit-group-modal').classList.add('open');
+}
+
+async function updateGroup() {
+  const id = document.getElementById('edit-grp-id').value;
+  const location = document.getElementById('edit-grp-location').value;
+  const date = document.getElementById('edit-grp-date').value;
+  const title = document.getElementById('edit-grp-title').value.trim();
+  const count = parseInt(document.getElementById('edit-grp-count').value) || 1;
+  const start_time = document.getElementById('edit-grp-start').value || null;
+  const end_time = document.getElementById('edit-grp-end').value || null;
+  const err = document.getElementById('edit-group-error');
+  err.style.display = 'none';
+  const { error } = await sb.from('groups').update({ location, date, title, count, start_time, end_time }).eq('id', id);
+  if (error) { showErr(err, 'Feil: ' + error.message); return; }
+  document.getElementById('edit-group-modal').classList.remove('open');
+  toast('Gruppe oppdatert!');
+  showPage(currentPage, savedScrollY);
+}
+
+async function deleteGroup(id) {
+  document.getElementById('edit-group-modal').classList.remove('open');
+  savedScrollY = window.scrollY;
+  const { error } = await sb.from('groups').delete().eq('id', id);
+  if (error) { toast('Feil: ' + error.message); return; }
+  toast('Gruppe slettet');
   showPage(currentPage, savedScrollY);
 }
 

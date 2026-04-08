@@ -981,6 +981,28 @@ async function doReject(signupId) {
   refreshPendingCount();
 }
 
+async function removePersonFromShift(shiftId, name) {
+  savedScrollY = window.scrollY;
+  // Fetch the shift's current role field
+  const { data, error } = await sb.from('shifts').select('role, slots').eq('id', shiftId).single();
+  if (error) { toast('Feil: ' + error.message); return; }
+
+  const entries = (data.role || '').split(',').map(e => e.trim()).filter(Boolean);
+  // Remove the entry that starts with this name
+  const newEntries = entries.filter(e => e.split(':')[0].trim() !== name.trim());
+
+  if (newEntries.length === 0) {
+    // No one left — delete the whole shift
+    await doDeleteShift(shiftId);
+  } else {
+    // Update role and slots
+    const { error: upErr } = await sb.from('shifts').update({ role: newEntries.join(', '), slots: newEntries.length }).eq('id', shiftId);
+    if (upErr) { toast('Feil: ' + upErr.message); return; }
+    toast(name + ' fjernet');
+    showPage(currentPage, savedScrollY);
+  }
+}
+
 async function doDeleteShift(shiftId) { savedScrollY = window.scrollY;
   const { error } = await sb.from('shifts').delete().eq('id', shiftId);
   if (error) { toast('Feil: ' + error.message); return; }
@@ -1258,7 +1280,7 @@ async function renderForside(c) {
             ${p.isOpptatt && p.desc ? `<div class="cal-person-time" style="color:#8B78B0;">${p.desc}</div>` : ''}
             ${!p.isFerie && !p.isOpptatt ? `<div class="cal-person-time">${p.start.substring(0,5)}–${p.end.substring(0,5)}</div>` : ''}
           </div>
-          <span onclick="event.stopPropagation();promptDelete('${p.shiftId}')" style="cursor:pointer;opacity:.4;font-size:13px;padding:0 2px;" title="Slett">×</span>
+          <span onclick="event.stopPropagation();removePersonFromShift('${p.shiftId}','${p.name.replace(/'/g,"\\'")}')" style="cursor:pointer;opacity:.4;font-size:13px;padding:0 2px;" title="Slett">×</span>
         </div>
       </div>`;
     });

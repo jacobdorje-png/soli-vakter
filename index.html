@@ -14,6 +14,7 @@
   --teal: #2E7B8A; --teal-light: #DDF0F3; --teal-border: #A8D8DF;
   --holiday: #C17A2A; --holiday-light: #FBF0E0; --holiday-border: #E8C48A;
   --fellesferie: #5A6E9A; --fellesferie-light: #E8EDF8; --fellesferie-border: #B0BEDD;
+  --konsert: #7A3A7A; --konsert-light: #F5E8F5; --konsert-border: #D4A8D4;
   --font: 'proxima-nova', 'Nunito', sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -170,6 +171,8 @@ body{font-family:var(--font);font-weight:300;background:var(--cream);color:var(-
 .cal-day.holiday .cal-day-num{color:var(--holiday);}
 .cal-day.fellesferie{background:var(--fellesferie-light);border-color:var(--fellesferie-border);}
 .cal-day.fellesferie .cal-day-num{color:var(--fellesferie);}
+.cal-day.konsert{background:var(--konsert-light);border-color:var(--konsert-border);}
+.cal-day.konsert .cal-day-num{color:var(--konsert);}
 .cal-group{background:var(--teal-light);color:var(--teal);border-radius:4px;padding:3px 5px;font-size:10px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:3px;border:1px solid var(--teal-border);}
 .cal-group-title{flex:1;font-weight:500;}
 .cal-event-title{flex:1;font-weight:500;}
@@ -489,7 +492,8 @@ create or replace trigger on_auth_user_created
   <div class="modal" style="max-width:520px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:8px;">
       <h3 style="margin-bottom:0;">Legg til vakt</h3>
-      <div style="display:flex;gap:6px;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" onclick="openKonsertFromShift()" style="font-size:12px;color:var(--konsert);border-color:var(--konsert-border);">🎵 Konsert</button>
         <button class="btn btn-outline btn-sm" onclick="openGroupFromShift()" style="font-size:12px;color:var(--teal);border-color:var(--teal-border);">+ Gruppe</button>
         <button class="btn btn-outline btn-sm" onclick="switchToEvent()" style="font-size:12px;">+ Hendelse</button>
       </div>
@@ -666,6 +670,49 @@ create or replace trigger on_auth_user_created
       <button class="btn btn-danger btn-sm" onclick="deleteEditShift()" style="margin-right:auto;">Slett</button>
       <button class="btn btn-outline" onclick="document.getElementById('edit-shift-modal').classList.remove('open')">Avbryt</button>
       <button class="btn btn-gold" onclick="saveEditShift()">Lagre</button>
+    </div>
+  </div>
+</div>
+
+<!-- KONSERT MODAL -->
+<div class="modal-backdrop" id="konsert-modal">
+  <div class="modal" style="max-width:360px;">
+    <h3>Legg til konsert</h3>
+    <div class="field">
+      <label>Dato</label>
+      <input type="date" id="kon-date" />
+    </div>
+    <div class="field">
+      <label>Sted</label>
+      <select id="kon-location">
+        <option value="soli">Soli</option>
+        <option value="restaurant">Fredrikstad</option>
+        <option value="fredrikstad">Smia</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Vis på</label>
+      <div style="display:flex;gap:8px;">
+        <button type="button" id="kon-vis-one" class="type-btn active" onclick="setKonVisibility('one')">Kun dette stedet</button>
+        <button type="button" id="kon-vis-all" class="type-btn" onclick="setKonVisibility('all')">Alle steder</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Navn / tittel <span style="color:var(--ink-faint);font-weight:300;">(valgfritt)</span></label>
+      <input type="text" id="kon-title" placeholder="f.eks. Jazzkveld, Sommerkonsert..." />
+    </div>
+    <div class="field">
+      <label>Tidspunkt <span style="color:var(--ink-faint);font-weight:300;">(valgfritt)</span></label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="kon-start" style="flex:1;"></select>
+        <span style="color:var(--ink-faint);font-size:12px;">–</span>
+        <select id="kon-end" style="flex:1;"></select>
+      </div>
+    </div>
+    <div id="konsert-modal-error" class="error-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('konsert-modal').classList.remove('open')">Avbryt</button>
+      <button class="btn" style="background:var(--konsert);color:white;" onclick="saveKonsert()">Lagre konsert</button>
     </div>
   </div>
 </div>
@@ -1176,7 +1223,7 @@ async function renderForside(c) {
       if (e.date !== ds) return false;
       const locParts = e.location.split(':');
       const baseLoc = locParts[0];
-      const isAll = locParts[1] === 'all';
+      const isAll = locParts.includes('all');
       if (baseLoc === locKey) return true;
       if (isAll) return true;
       return false;
@@ -1185,13 +1232,16 @@ async function renderForside(c) {
     const dayOfWeekIdx = (d.getDay() + 6) % 7;
     const holiday = isHoliday(ds);
     const fellesferie = isFellesferie(ds);
+    const hasKonsert = dayEvents.some(e => e.location.includes(':konsert'));
+    const hasEvent = dayEvents.some(e => !e.location.includes(':konsert'));
 
     let cls = 'cal-day';
     if (isToday) cls += ' today';
     if (isPast) cls += ' past';
     if (holiday) cls += ' holiday';
     else if (fellesferie) cls += ' fellesferie';
-    else if (dayEvents.length > 0) cls += ' all-day-event';
+    else if (hasKonsert && !hasEvent) cls += ' konsert';
+    else if (hasEvent || hasKonsert) cls += ' all-day-event';
 
     const clickHandler = isPast ? '' : `onclick="openDayModal('${locKey}','${ds}')"`;
 
@@ -1208,10 +1258,13 @@ async function renderForside(c) {
     // Events
     dayEvents.forEach(ev => {
       window.eventsMap[ev.id] = ev;
+      const isKonsert = ev.location.includes(':konsert');
       const timeStr = ev.start_time ? ` · ${ev.start_time.substring(0,5)}${ev.end_time ? '–'+ev.end_time.substring(0,5) : ''}` : '';
+      const textColor = isKonsert ? 'var(--konsert)' : '#6B3820';
+      const icon = isKonsert ? '🎵 ' : '';
       inner += `<div style="font-size:10px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;gap:2px;">
-        <span onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;flex:1;color:#6B3820;word-break:break-word;">${ev.title}${timeStr}</span>
-        <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:12px;flex-shrink:0;color:#6B3820;">×</span>
+        <span onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;flex:1;color:${textColor};word-break:break-word;">${icon}${ev.title}${timeStr}</span>
+        <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:12px;flex-shrink:0;color:${textColor};">×</span>
       </div>`;
     });
 
@@ -1875,6 +1928,51 @@ async function fetchEvents(startDate, endDate) {
 
 let pendingEventLoc = null, pendingEventDate = null;
 
+// ─── KONSERT ─────────────────────────────────────────────────────────────────
+function setKonVisibility(vis) {
+  document.getElementById('kon-vis-one').classList.toggle('active', vis === 'one');
+  document.getElementById('kon-vis-all').classList.toggle('active', vis === 'all');
+}
+
+function openKonsertFromShift() {
+  const loc = document.getElementById('m-location').value;
+  const date = selectedDays.length > 0 ? selectedDays[0].date : fmtDate(new Date());
+  closeModal();
+  openKonsertModal(loc, date);
+}
+
+function openKonsertModal(loc, date) {
+  savedScrollY = window.scrollY;
+  document.getElementById('kon-location').value = loc;
+  document.getElementById('kon-date').value = date;
+  document.getElementById('kon-title').value = '';
+  document.getElementById('konsert-modal-error').style.display = 'none';
+  setKonVisibility('all'); // default: show on all
+  const opts = buildTimeOptions();
+  const timeOpts = opts.map(t => `<option value="${t}">${t}</option>`).join('');
+  document.getElementById('kon-start').innerHTML = `<option value="">Hele dagen</option>` + timeOpts;
+  document.getElementById('kon-end').innerHTML = `<option value="">–</option>` + timeOpts;
+  document.getElementById('konsert-modal').classList.add('open');
+}
+
+async function saveKonsert() {
+  const loc = document.getElementById('kon-location').value;
+  const date = document.getElementById('kon-date').value;
+  const title = document.getElementById('kon-title').value.trim() || 'Konsert';
+  const start_time = document.getElementById('kon-start').value || null;
+  const end_time = document.getElementById('kon-end').value || null;
+  const isAll = document.getElementById('kon-vis-all').classList.contains('active');
+  const err = document.getElementById('konsert-modal-error');
+  if (!date) { showErr(err, 'Velg dato'); return; }
+  err.style.display = 'none';
+  const location = isAll ? loc + ':konsert:all' : loc + ':konsert';
+  const { error } = await sb.from('events').insert({ location, date, title, start_time, end_time });
+  if (error) { showErr(err, 'Feil: ' + error.message); return; }
+  document.getElementById('konsert-modal').classList.remove('open');
+  toast('Konsert lagt til!');
+  showPage(currentPage, savedScrollY);
+}
+
 // ─── EVENT VISIBILITY ────────────────────────────────────────────────────────
 function setEvVisibility(vis) {
   document.getElementById('ev-vis-one').classList.toggle('active', vis === 'one');
@@ -1927,10 +2025,10 @@ function editEvent(ev) {
   document.getElementById('edit-ev-id').value = ev.id;
   document.getElementById('edit-ev-date').value = ev.date;
 
-  // Parse stored location — might be 'soli:all'
+  // Parse stored location — might be 'soli:all', 'soli:konsert', 'soli:konsert:all'
   const locParts = ev.location.split(':');
   const baseLoc = locParts[0];
-  const isAll = locParts[1] === 'all';
+  const isAll = locParts.includes('all');
   document.getElementById('edit-ev-location').value = baseLoc;
   updateEditEvVisibility();
   setEditEvVisibility(isAll ? 'all' : 'one');

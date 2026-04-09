@@ -1178,10 +1178,11 @@ async function renderToday(c) {
 }
 
 function toggleFullYear(key) {
+  savedScrollY = window.scrollY;
   showFullYear[key] = !showFullYear[key];
   const c = document.getElementById('main-content');
   c.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><span>Laster kalender...</span></div>';
-  setTimeout(() => showPage('forside'), 50);
+  setTimeout(() => showPage('forside', savedScrollY), 50);
 }
 
 const showFullYear = { soli: false, restaurant: false, fredrikstad: false };

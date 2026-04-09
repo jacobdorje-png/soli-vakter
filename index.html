@@ -13,7 +13,7 @@
   --border: #E8E2DA; --purple: #6B5A8A; --purple-light: #EDE8F5;
   --teal: #2E7B8A; --teal-light: #DDF0F3; --teal-border: #A8D8DF;
   --holiday: #C17A2A; --holiday-light: #FBF0E0; --holiday-border: #E8C48A;
-  --fellesferie: #5A6E9A; --fellesferie-light: #E8EDF8; --fellesferie-border: #B0BEDD;
+  --fellesferie: #2E8A6A; --fellesferie-light: #E0F4ED; --fellesferie-border: #90D4BC;
   --konsert: #7A3A7A; --konsert-light: #F5E8F5; --konsert-border: #D4A8D4;
   --font: 'proxima-nova', 'Nunito', sans-serif;
 }
@@ -2086,7 +2086,10 @@ const HOLIDAY_NAMES = {
 };
 function isHoliday(ds) { return HOLIDAYS_2025.has(ds) || HOLIDAYS_2026.has(ds); }
 function holidayName(ds) { return HOLIDAY_NAMES[ds.substring(5)] || 'Helligdag'; }
-function isFellesferie(ds) { return ds >= '2025-07-07' && ds <= '2025-08-01'; }
+function isFellesferie(ds) {
+  return (ds >= '2025-07-07' && ds <= '2025-08-01') ||
+         (ds >= '2026-07-06' && ds <= '2026-07-31');
+}
 
 // ─── GROUPS ──────────────────────────────────────────────────────────────────
 window.groupsMap = {};

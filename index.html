@@ -702,13 +702,29 @@ create or replace trigger on_auth_user_created
     <input type="hidden" id="fredrikstad-day-date" />
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:.5rem;">
       <button class="btn btn-gold" style="width:100%;justify-content:flex-start;gap:10px;" onclick="document.getElementById('fredrikstad-day-modal').classList.remove('open');openShiftModalForDay('restaurant',document.getElementById('fredrikstad-day-date').value)">🗓 Legg til vakt</button>
-      <button class="btn btn-outline" style="width:100%;justify-content:flex-start;gap:10px;color:var(--stengt);border-color:var(--stengt-border);" onclick="addStengt()">🔒 Merk som Stengt</button>
+      <button class="btn btn-outline" style="width:100%;justify-content:flex-start;gap:10px;color:var(--stengt);border-color:var(--stengt-border);" onclick="openStengtModal()">🔒 Merk som Stengt</button>
       <button class="btn btn-outline" style="width:100%;justify-content:flex-start;gap:10px;" onclick="document.getElementById('fredrikstad-day-modal').classList.remove('open');openKonsertModal('restaurant',document.getElementById('fredrikstad-day-date').value)">🎵 Konsert</button>
       <button class="btn btn-outline" style="width:100%;justify-content:flex-start;gap:10px;color:var(--teal);border-color:var(--teal-border);" onclick="document.getElementById('fredrikstad-day-modal').classList.remove('open');openGroupModal('restaurant',document.getElementById('fredrikstad-day-date').value)">👥 Gruppe</button>
       <button class="btn btn-outline" style="width:100%;justify-content:flex-start;gap:10px;" onclick="document.getElementById('fredrikstad-day-modal').classList.remove('open');switchToEventForDay('restaurant',document.getElementById('fredrikstad-day-date').value)">📌 Hendelse</button>
     </div>
     <div class="modal-actions" style="margin-top:1rem;">
       <button class="btn btn-outline" onclick="document.getElementById('fredrikstad-day-modal').classList.remove('open')">Avbryt</button>
+    </div>
+  </div>
+</div>
+
+<!-- STENGT MODAL -->
+<div class="modal-backdrop" id="stengt-modal">
+  <div class="modal" style="max-width:420px;">
+    <h3>🔒 Merk som Stengt</h3>
+    <div class="field">
+      <label>Velg dager</label>
+      <div id="stengt-day-picker" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    </div>
+    <div id="stengt-modal-error" class="error-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('stengt-modal').classList.remove('open')">Avbryt</button>
+      <button class="btn" style="background:var(--stengt);color:white;" onclick="saveStengt()">Lagre</button>
     </div>
   </div>
 </div>
@@ -2244,12 +2260,57 @@ async function saveKonsert() {
   showPage(currentPage, savedScrollY);
 }
 
-async function addStengt() {
+let stengtSelectedDays = [];
+
+function openStengtModal() {
   const date = document.getElementById('fredrikstad-day-date').value;
   document.getElementById('fredrikstad-day-modal').classList.remove('open');
-  const { error } = await sb.from('events').insert({ location: 'restaurant:stengt', date, title: 'Stengt' });
-  if (error) { toast('Feil: ' + error.message); return; }
-  toast('Merket som stengt');
+  savedScrollY = window.scrollY;
+
+  // Build day picker centered on clicked date
+  const anchor = new Date(date + 'T12:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = addDays(anchor, -7);
+  const DAY_SHORT = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
+  const MON_SHORT = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+
+  stengtSelectedDays = [date]; // pre-select clicked date
+
+  function renderPicker() {
+    let html = '';
+    for (let i = 0; i < 21; i++) {
+      const d = addDays(start, i);
+      const ds = fmtDate(d);
+      if (ds < fmtDate(today)) continue;
+      const dayIdx = (d.getDay() + 6) % 7;
+      const isSel = stengtSelectedDays.includes(ds);
+      html += `<button type="button" class="day-btn${isSel?' selected':''}" onclick="toggleStengtDay('${ds}')">${DAY_SHORT[dayIdx]} ${d.getDate()}. ${MON_SHORT[d.getMonth()]}</button>`;
+    }
+    document.getElementById('stengt-day-picker').innerHTML = html;
+  }
+
+  window._renderStengtPicker = renderPicker;
+  renderPicker();
+  document.getElementById('stengt-modal-error').style.display = 'none';
+  document.getElementById('stengt-modal').classList.add('open');
+}
+
+function toggleStengtDay(date) {
+  const idx = stengtSelectedDays.indexOf(date);
+  if (idx >= 0) stengtSelectedDays.splice(idx, 1);
+  else stengtSelectedDays.push(date);
+  if (window._renderStengtPicker) window._renderStengtPicker();
+}
+
+async function saveStengt() {
+  const err = document.getElementById('stengt-modal-error');
+  if (stengtSelectedDays.length === 0) { showErr(err, 'Velg minst én dag'); return; }
+  err.style.display = 'none';
+  for (const date of stengtSelectedDays) {
+    await sb.from('events').insert({ location: 'restaurant:stengt', date, title: 'Stengt' });
+  }
+  document.getElementById('stengt-modal').classList.remove('open');
+  toast(`${stengtSelectedDays.length} dag${stengtSelectedDays.length > 1 ? 'er' : ''} merket som stengt`);
   showPage(currentPage, savedScrollY);
 }
 

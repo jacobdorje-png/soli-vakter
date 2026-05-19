@@ -1225,6 +1225,7 @@ function toggleFullYear(key) {
 }
 
 const showFullYear = { soli: false, restaurant: false, fredrikstad: false };
+let extraForsideYears = [];
 
 async function renderForside(c) {
   const today = new Date();
@@ -1234,10 +1235,12 @@ async function renderForside(c) {
   const monday = addDays(today, -daysFromMon);
   const todayStr = fmtDate(today);
   const fourWeeksEnd = addDays(monday, 27);
-  const yearEnd = new Date(today.getFullYear(), 11, 31);
+  const currentYear = today.getFullYear();
+  const maxYear = extraForsideYears.length > 0 ? Math.max(...extraForsideYears) : currentYear;
+  const yearEnd = new Date(maxYear, 11, 31);
 
   // Fetch enough for everyone
-  const anyFull = Object.values(showFullYear).some(v => v);
+  const anyFull = Object.values(showFullYear).some(v => v) || extraForsideYears.length > 0;
   const fetchEnd = anyFull ? yearEnd : fourWeeksEnd;
 
   const [shifts, events, groups] = await Promise.all([
@@ -1463,7 +1466,59 @@ async function renderForside(c) {
     html += `</div>`;
   }
 
+  // Extra years (loaded via "Se neste år")
+  if (extraForsideYears.length > 0) {
+    extraForsideYears.slice().sort().forEach(yr => {
+      const yrStart = new Date(yr, 0, 1);
+      const yrEnd = new Date(yr, 11, 31);
+      const yrWeeks = buildWeeks(yrStart, yrEnd);
+
+      html += `<div style="margin-top:2.5rem;padding-top:1.5rem;border-top:2px solid var(--border);">
+        <h2 style="font-size:1.6rem;font-weight:400;margin-bottom:1.5rem;">${yr}</h2>`;
+
+      for (const [key, loc] of Object.entries(LOCS)) {
+        html += `<div class="cal-wrap">
+          <div class="cal-loc-header">
+            <span style="width:10px;height:10px;border-radius:50%;background:${loc.color};display:inline-block;flex-shrink:0;"></span>
+            <span class="cal-loc-title">${loc.name}</span>
+          </div>`;
+        let lastM = -1;
+        yrWeeks.forEach(week => {
+          const mid = week[3];
+          if (mid.getMonth() !== lastM) {
+            html += `<div class="cal-week-label" style="font-size:13px;font-weight:400;color:var(--ink-muted);margin-top:1rem;">${MON_NO[mid.getMonth()]}</div>`;
+            lastM = mid.getMonth();
+          }
+          html += renderWeek(week, key);
+        });
+        html += `</div>`;
+      }
+      html += `</div>`;
+    });
+  }
+
+  // Se neste år button
+  const nextYearForside = maxYear + 1;
+  html += `<div style="text-align:center;margin:2.5rem 0 1rem;">
+    <button class="btn btn-outline" onclick="loadNextForsideYear(${nextYearForside})" style="padding:12px 28px;">
+      Se ${nextYearForside} ↓
+    </button>
+  </div>`;
+
   c.innerHTML = html;
+}
+
+function buildWeeks(from, to) {
+  const total = Math.ceil((to - from) / 86400000) + 1;
+  return Array.from({length: Math.ceil(total/7)}, (_,w) =>
+    Array.from({length:7}, (_,d) => addDays(from, w*7+d))
+  ).filter(week => week[0] <= to);
+}
+
+async function loadNextForsideYear(year) {
+  savedScrollY = window.scrollY;
+  if (!extraForsideYears.includes(year)) extraForsideYears.push(year);
+  await showPage('forside', savedScrollY);
 }
 
 function getWeekNumber(d) {

@@ -1292,7 +1292,7 @@ async function renderForside(c) {
     const holiday = isHoliday(ds);
     const fellesferie = isFellesferie(ds);
     const hasKonsert = dayEvents.some(e => e.location.includes(':konsert'));
-    const hasEvent = dayEvents.some(e => !e.location.includes(':konsert'));
+    const hasEvent = dayEvents.some(e => !e.location.includes(':konsert') && !e.location.includes(':stengt'));
     const hasStengt = dayEvents.some(e => e.location.includes(':stengt'));
     // Fredrikstad auto-closed Mon/Tue/Wed (unless manually overridden with a shift)
     const dayOfW = d.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed
@@ -1625,7 +1625,7 @@ async function renderLocation(loc, c) {
     const holiday = isHoliday(ds);
     const fellesferie = isFellesferie(ds);
     const hasKonsert = dayEvents.some(e => e.location.includes(':konsert'));
-    const hasEvent = dayEvents.some(e => !e.location.includes(':konsert'));
+    const hasEvent = dayEvents.some(e => !e.location.includes(':konsert') && !e.location.includes(':stengt'));
     const hasStengt = dayEvents.some(e => e.location.includes(':stengt'));
     const autoStengt = loc === 'restaurant' && [1,2,3].includes(d.getDay()) && dayShifts.length === 0 && !hasStengt;
     const isStengt = hasStengt || autoStengt;

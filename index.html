@@ -2,7 +2,10 @@
 <html lang="no">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F9F6F0">
 <title>Soli Brug — Vaktplan</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -212,42 +215,56 @@ body{font-family:var(--font);font-weight:300;background:var(--cream);color:var(-
 .toast.show{transform:translateY(0);opacity:1;}
 
 @media(max-width:640px){
-  .content{padding-bottom:80px !important;}
+  /* Fix iOS zoom on inputs — must be 16px+ */
+  input,select,textarea{font-size:16px !important;}
+
+  .content{padding-bottom:90px !important;padding:.5rem;}
   .sidebar{display:none;}
-  .content{padding:.5rem;}
   .card{padding:1.25rem;}
   .topbar{padding:0 .75rem;height:50px;}
   .topbar-logo{font-size:1.1rem;}
   .user-chip{display:none;}
-  .btn-sm{padding:5px 10px;font-size:11px;}
-  /* 4 columns on mobile — bigger touch targets */
+  .btn-sm{padding:8px 12px;font-size:13px;}
+
+  /* Calendar */
   .cal-grid{grid-template-columns:repeat(4,1fr);gap:3px;}
-  .cal-day{padding:6px;min-height:80px;border-radius:6px;}
+  .cal-day{padding:6px 5px;min-height:72px;border-radius:6px;}
   .cal-day-name{font-size:9px;letter-spacing:0;}
-  .cal-day-num{font-size:1rem;margin-bottom:4px;}
-  .cal-person{padding:3px 4px;margin-bottom:3px;}
+  .cal-day-num{font-size:.95rem;margin-bottom:3px;line-height:1.2;}
+  .cal-person{padding:2px 4px;margin-bottom:2px;}
   .cal-person-name{font-size:10px;}
-  .cal-person-time{font-size:9px;}
-  .cal-add-hint{font-size:9px;margin-top:4px;}
-  .cal-event{padding:2px 4px;}
-  .cal-event-title{font-size:9px;}
-  .cal-week-label{font-size:10px;margin-top:1rem;}
-  .cal-loc-title{font-size:1.2rem;}
-  .modal{padding:1.25rem;max-height:85vh;overflow-y:auto;}
-  .modal h3{font-size:1.2rem;}
-  .day-btn{padding:7px 9px;font-size:11px;}
-  .page-header h1{font-size:1.5rem;}
-  .shift-card{flex-wrap:wrap;gap:8px;}
-  .shift-time{min-width:auto;font-size:1rem;}
-  .logo{font-size:2rem;}
+  .cal-person-time{font-size:8px;}
+  .cal-add-hint{font-size:9px;margin-top:3px;}
+  .cal-event,.cal-group{padding:2px 4px;font-size:9px;}
+  .cal-week-label{font-size:11px;margin-top:1rem;margin-bottom:3px;}
+  .cal-loc-title{font-size:1.3rem;}
+
+  /* Modal — bottom sheet */
+  .modal-backdrop{align-items:flex-end;padding:0;}
+  .modal{border-radius:20px 20px 0 0;width:100%;max-width:100%;max-height:88vh;padding:1.5rem 1.25rem;padding-bottom:calc(1.5rem + env(safe-area-inset-bottom));}
+  .modal h3{font-size:1.2rem;margin-bottom:1.25rem;}
+  .modal-actions{gap:8px;flex-wrap:wrap;}
+  .modal-actions .btn{flex:1;min-width:0;justify-content:center;}
+
+  /* Touch targets */
+  .day-btn{padding:10px 10px;font-size:13px;border-radius:10px;}
+  .name-chip-btn{padding:12px 14px;font-size:15px;min-height:44px;}
+  .name-tag{padding:8px 12px;font-size:14px;}
+  .type-btn{padding:10px 14px;font-size:14px;min-height:44px;}
+  .btn{min-height:44px;}
+
+  /* Other */
+  .page-header h1{font-size:1.4rem;}
   .topbar-right{gap:6px;}
+  .topbar-right .btn{padding:7px 10px;font-size:12px;min-height:36px;}
   .main-layout{flex-direction:column;}
   .mobile-nav{display:flex;}
-  /* Make name chips bigger on mobile */
-  .name-chip-btn{padding:10px 14px;font-size:15px;}
-  /* Full-width modal on mobile */
-  .modal{border-radius:12px 12px 0 0;position:fixed;bottom:0;left:0;right:0;max-width:100%;max-height:92vh;}
-  .modal-backdrop{align-items:flex-end;}
+  .logo{font-size:2.2rem;}
+  .shift-card{flex-wrap:wrap;gap:8px;padding:10px 12px;}
+  .shift-time{min-width:auto;font-size:1rem;}
+  .toast{bottom:90px;right:1rem;left:1rem;max-width:none;text-align:center;}
+  .mobile-nav{padding-bottom:env(safe-area-inset-bottom);}
+  .mobile-nav-item{padding:10px 4px 8px;}
 }
 @media(min-width:641px){
   .mobile-nav{display:none !important;}
@@ -2299,6 +2316,7 @@ function chooseHendelse() {
 let pendingDeleteId = null;
 
 function promptDelete(shiftId) {
+  savedScrollY = window.scrollY;
   pendingDeleteId = shiftId;
   document.getElementById('delete-modal').classList.add('open');
 }

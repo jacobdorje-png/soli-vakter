@@ -1493,26 +1493,189 @@ async function renderMy(c) {
   c.innerHTML = html;
 }
 
-async function renderLocation(loc, c) {
-  const weeks = getWeek();
-  const start = fmtDate(weeks[0]), end = fmtDate(weeks[6]);
-  const shifts = await fetchShifts(loc, start, end);
-  const locName = LOCS[loc].name;
-  let html = `<div class="page-header-row"><div class="page-header" style="margin-bottom:0;"><h1>${locName}</h1><p>Ukeoversikt og påmelding</p></div>`;
-  if (currentProfile.is_admin) html += `<button class="btn btn-gold" onclick="openShiftModal('${loc}')">+ Legg til vakt</button>`;
-  html += `</div>`;
-  html += `<div class="week-nav"><button class="week-btn" onclick="weekOffset--;showPage('${loc}')">‹</button><div class="week-label">${norDay(weeks[0]).split(' ').slice(1).join(' ')} – ${norDay(weeks[6]).split(' ').slice(1).join(' ')}</div><button class="week-btn" onclick="weekOffset++;showPage('${loc}')">›</button></div>`;
+// Track which extra years are loaded per location
+const locationYears = { soli: [], restaurant: [], fredrikstad: [] };
 
-  weeks.forEach(d => {
+async function renderLocation(loc, c) {
+  const locObj = LOCS[loc];
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayStr = fmtDate(today);
+
+  // Start from Monday of current week
+  const dayOfWeek = today.getDay();
+  const daysFromMon = (dayOfWeek + 6) % 7;
+  const monday = addDays(today, -daysFromMon);
+
+  // Current year end
+  const currentYear = today.getFullYear();
+  const extraYears = locationYears[loc] || [];
+  const maxYear = extraYears.length > 0 ? Math.max(...extraYears) : currentYear;
+  const yearEnd = new Date(maxYear, 11, 31);
+
+  const [shifts, events, groups] = await Promise.all([
+    fetchShifts(loc, fmtDate(monday), fmtDate(yearEnd)),
+    fetchEvents(fmtDate(monday), fmtDate(yearEnd)),
+    fetchGroups(fmtDate(monday), fmtDate(yearEnd))
+  ]);
+
+  window.eventsMap = window.eventsMap || {};
+  window.groupsMap = window.groupsMap || {};
+  events.forEach(e => { window.eventsMap[e.id] = e; });
+  groups.forEach(g => { window.groupsMap[g.id] = g; });
+
+  const DAY_SHORT = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
+  const MON_NO = ['januar','februar','mars','april','mai','juni','juli','august','september','oktober','november','desember'];
+
+  // Build all weeks from monday to yearEnd
+  function buildWeeks(from, to) {
+    const total = Math.ceil((to - from) / 86400000) + 1;
+    return Array.from({length: Math.ceil(total/7)}, (_,w) =>
+      Array.from({length:7}, (_,d) => addDays(from, w*7+d))
+    ).filter(week => week[0] <= to);
+  }
+
+  const allWeeks = buildWeeks(monday, yearEnd);
+
+  // Reuse calDay logic inline
+  function locCalDay(d) {
     const ds = fmtDate(d);
-    const day = shifts.filter(s => s.date === ds);
-    const isToday = ds === fmtDate(new Date());
-    html += `<div class="day-section"><div class="day-header">${norDay(d)}${isToday?'<span class="today-marker">I dag</span>':''}</div>`;
-    if (!day.length) html += `<div class="empty-msg" style="padding:6px 0 10px;">Ingen vakter planlagt</div>`;
-    else day.forEach(s => { html += shiftCard(s, false); });
-    html += `</div>`;
+    const isToday = ds === todayStr;
+    const isPast = ds < todayStr;
+    const dayShifts = shifts.filter(s => s.date === ds);
+    const dayEvents = events.filter(e => {
+      if (e.date !== ds) return false;
+      const parts = e.location.split(':');
+      if (parts[0] === loc) return true;
+      if (parts.includes('all')) return true;
+      return false;
+    });
+    const dayGroups = groups.filter(g => g.date === ds);
+    const dayOfWeekIdx = (d.getDay() + 6) % 7;
+    const holiday = isHoliday(ds);
+    const fellesferie = isFellesferie(ds);
+    const hasKonsert = dayEvents.some(e => e.location.includes(':konsert'));
+    const hasEvent = dayEvents.some(e => !e.location.includes(':konsert'));
+    const hasStengt = dayEvents.some(e => e.location.includes(':stengt'));
+    const autoStengt = loc === 'restaurant' && [1,2,3].includes(d.getDay()) && dayShifts.length === 0 && !hasStengt;
+    const isStengt = hasStengt || autoStengt;
+
+    let cls = 'cal-day';
+    if (isToday) cls += ' today';
+    if (isPast) cls += ' past';
+    if (isStengt && !hasEvent && !hasKonsert) cls += ' stengt';
+    else if (holiday) cls += ' holiday';
+    else if (fellesferie) cls += ' fellesferie';
+    else if (hasKonsert && !hasEvent) cls += ' konsert';
+    else if (hasEvent || hasKonsert) cls += ' all-day-event';
+
+    const clickHandler = isPast ? '' : `onclick="openDayModal('${loc}','${ds}')"`;
+
+    let inner = `<div class="cal-day-name">${DAY_SHORT[dayOfWeekIdx]}</div>`;
+    inner += `<div class="cal-day-num">${d.getDate()}. <span style="font-size:.7em;opacity:.7;">${MON_NO[d.getMonth()].substring(0,3)}</span></div>`;
+
+    if (isStengt && !hasEvent && !hasKonsert) {
+      inner += `<div style="font-size:9px;font-weight:500;color:var(--stengt);margin-bottom:2px;">Stengt</div>`;
+      dayEvents.filter(e => e.location.includes(':stengt')).forEach(ev => {
+        window.eventsMap[ev.id] = ev;
+        inner += `<span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="font-size:9px;color:var(--stengt);cursor:pointer;opacity:.6;">× fjern</span>`;
+      });
+    } else if (holiday) {
+      inner += `<div style="font-size:9px;font-weight:500;color:var(--holiday);margin-bottom:3px;word-break:break-word;">${holidayName(ds)}</div>`;
+    } else if (fellesferie) {
+      inner += `<div style="font-size:9px;font-weight:500;color:var(--fellesferie);margin-bottom:3px;">Fellesferie</div>`;
+    }
+
+    dayEvents.forEach(ev => {
+      window.eventsMap[ev.id] = ev;
+      const isKonsert = ev.location.includes(':konsert');
+      if (ev.location.includes(':stengt')) return;
+      const timeStr = ev.start_time ? ` · ${ev.start_time.substring(0,5)}${ev.end_time?'–'+ev.end_time.substring(0,5):''}` : '';
+      const textColor = isKonsert ? 'var(--konsert)' : '#6B3820';
+      const icon = isKonsert ? '🎵 ' : '';
+      inner += `<div style="font-size:10px;font-weight:500;margin-bottom:2px;display:flex;align-items:center;justify-content:space-between;gap:2px;">
+        <span onclick="event.stopPropagation();editEvent(window.eventsMap['${ev.id}'])" style="cursor:pointer;flex:1;color:${textColor};word-break:break-word;">${icon}${ev.title}${timeStr}</span>
+        <span onclick="event.stopPropagation();deleteEvent('${ev.id}')" style="cursor:pointer;opacity:.5;font-size:11px;color:${textColor};">×</span></div>`;
+    });
+
+    dayGroups.forEach(g => {
+      window.groupsMap[g.id] = g;
+      const timeStr = g.start_time ? ` ${g.start_time.substring(0,5)}${g.end_time?'–'+g.end_time.substring(0,5):''}` : '';
+      inner += `<div class="cal-group"><span onclick="event.stopPropagation();editGroup(window.groupsMap['${g.id}'])" style="cursor:pointer;flex:1;" class="cal-group-title">👥 ${g.count}${g.title?' · '+g.title:''}${timeStr}</span>
+        <span onclick="event.stopPropagation();deleteGroup('${g.id}')" style="cursor:pointer;opacity:.5;font-size:11px;">×</span></div>`;
+    });
+
+    const allPeople = dayShifts.flatMap(s => {
+      const roleNames = (s.role||'').split(',').map(n=>n.trim()).filter(Boolean);
+      if (roleNames.length > 0 && roleNames[0] !== 'Vakt') {
+        return roleNames.map(entry => {
+          const parts = entry.split(':');
+          const name = parts[0]; const tag = parts[1]||''; const desc = parts.slice(2).join(':')||'';
+          return { name, start:s.start_time, end:s.end_time, shiftId:s.id, isFerie:tag==='ferie', isOpptatt:tag==='opptatt', desc, isMe:name.toLowerCase()===currentProfile.name.split(' ')[0].toLowerCase() };
+        });
+      }
+      return (s.signups||[]).filter(sg=>sg.status==='approved').map(sg=>({ name:sg.profiles?.name||'?', start:s.start_time, end:s.end_time, shiftId:s.id, isFerie:false, isOpptatt:false, desc:'', isMe:sg.user_id===currentProfile.id }));
+    });
+
+    allPeople.sort((a,b) => {
+      if (a.isFerie!==b.isFerie||a.isOpptatt!==b.isOpptatt) { if(!a.isFerie&&!a.isOpptatt) return -1; if(!b.isFerie&&!b.isOpptatt) return 1; return a.isFerie?1:-1; }
+      return a.name.localeCompare(b.name,'no');
+    });
+
+    allPeople.forEach(p => {
+      const firstName = p.name.split(' ')[0];
+      let style = 'cursor:pointer;';
+      if (p.isFerie) style += 'background:var(--red-light);color:var(--red);border:1px solid #D4AAAA;';
+      else if (p.isOpptatt) style += 'background:#EDE8F5;color:#6B5A8A;border:1px solid #C4B8DC;';
+      else if (p.isMe) style += 'background:#C8E6D4;color:#2E7D4F;';
+      inner += `<div class="cal-person" style="${style}" onclick="event.stopPropagation();openEditShift('${p.shiftId}','${p.name.replace(/'/g,"\\'")}','${p.isFerie?'ferie':p.isOpptatt?'opptatt':'jobb'}','${p.desc.replace(/'/g,"\\'")}')">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
+          <div><div class="cal-person-name">${firstName}${p.isFerie?' 🏖':''}</div>${p.isOpptatt&&p.desc?`<div class="cal-person-time" style="color:#8B78B0;">${p.desc}</div>`:''} ${!p.isFerie&&!p.isOpptatt?`<div class="cal-person-time">${p.start.substring(0,5)}–${p.end.substring(0,5)}</div>`:''}</div>
+          <span onclick="event.stopPropagation();removePersonFromShift('${p.shiftId}','${p.name.replace(/'/g,"\\'")}'))" style="cursor:pointer;opacity:.4;font-size:13px;padding:0 2px;">×</span>
+        </div></div>`;
+    });
+
+    if (!isPast) inner += `<div class="cal-add-hint">+ legg til</div>`;
+    return `<div class="${cls}" ${clickHandler}>${inner}</div>`;
+  }
+
+  // Group weeks by month
+  let html = `<div class="page-header" style="margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="width:12px;height:12px;border-radius:50%;background:${locObj.color};display:inline-block;"></span>
+      <h1>${locObj.name}</h1>
+    </div>
+    <p>Trykk på en dag for å legge til</p>
+  </div>`;
+
+  let lastMonth = -1, lastYear = -1;
+  allWeeks.forEach(week => {
+    const mid = week[3];
+    if (mid.getMonth() !== lastMonth || mid.getFullYear() !== lastYear) {
+      const isNewYear = mid.getFullYear() !== lastYear && lastYear !== -1;
+      if (isNewYear) html += `<div style="font-size:1.3rem;font-weight:500;font-family:var(--font);color:var(--ink);margin:2rem 0 1rem;padding-top:1rem;border-top:2px solid var(--border);">${mid.getFullYear()}</div>`;
+      html += `<div class="cal-week-label" style="font-size:13px;color:var(--ink-muted);margin-top:${lastMonth===-1?'0':'1.25rem'};">${MON_NO[mid.getMonth()]}</div>`;
+      lastMonth = mid.getMonth();
+      lastYear = mid.getFullYear();
+    }
+    html += `<div class="cal-grid">${week.map(d => locCalDay(d)).join('')}</div>`;
   });
+
+  // "Se neste år" button
+  const nextYear = maxYear + 1;
+  html += `<div style="text-align:center;margin:2rem 0;">
+    <button class="btn btn-outline" onclick="loadNextYearForLoc('${loc}',${nextYear})" style="padding:12px 28px;">
+      Se ${nextYear} ↓
+    </button>
+  </div>`;
+
   c.innerHTML = html;
+}
+
+async function loadNextYearForLoc(loc, year) {
+  savedScrollY = window.scrollY;
+  if (!locationYears[loc]) locationYears[loc] = [];
+  locationYears[loc].push(year);
+  await showPage(loc, savedScrollY);
 }
 
 async function renderAdminShifts(c) {

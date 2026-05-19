@@ -1275,7 +1275,7 @@ async function renderForside(c) {
     const clickHandler = isPast ? '' : `onclick="openDayModal('${locKey}','${ds}')"`;
 
     let inner = `<div class="cal-day-name">${DAY_SHORT[dayOfWeekIdx]}</div>`;
-    inner += `<div class="cal-day-num">${d.getDate()}.</div>`;
+    inner += `<div class="cal-day-num">${d.getDate()}. <span style="font-size:.7em;opacity:.7;">${MON_NO[d.getMonth()].substring(0,3)}</span></div>`;
 
     // Holiday/fellesferie/stengt labels
     if (isStengt && !hasEvent && !hasKonsert) {

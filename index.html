@@ -247,6 +247,18 @@
     line-height: 1;
   }
   .tag button.remove:hover { color: #b04a3c; }
+  .del-day-btn {
+    background: none;
+    border: 1px solid #d8d6cd;
+    color: #b6b3a8;
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 300;
+  }
+  .del-day-btn:hover { border-color: #e3bcb2; color: #b04a3c; background: var(--c-red-bg); }
   .claim-btn, .rsvp-btn {
     background: #2b2a28;
     color: #f4f3ef;
@@ -535,11 +547,12 @@ function dayRowHtml(dato, rows, today, isOpeningDay) {
     claimBtn = `<span class="empty-slot">velg navn øverst</span>`;
   }
   const openingTag = isOpeningDay ? '<span class="tag opening-tag">Åpningsdag</span>' : '';
+  const deleteBtn = `<button class="del-day-btn" onclick="deleteVaktDag('${dato}')" title="Slett denne dagen fra vaktplanen">🗑 Slett dag</button>`;
   return `<div class="day-row ${statusClass} ${isToday ? 'today' : ''}">
     <div class="day-left">
       <div class="weekday">${fmtDate(dato)}${isToday ? ' · i dag' : ''}</div>
     </div>
-    <div class="day-right">${openingTag}${tagsHtml}${claimBtn}</div>
+    <div class="day-right">${openingTag}${tagsHtml}${claimBtn}${deleteBtn}</div>
   </div>`;
 }
 
@@ -707,6 +720,16 @@ async function unclaim(rowId) {
 }
 window.claim = claim;
 window.unclaim = unclaim;
+
+async function deleteVaktDag(dato) {
+  const bekreft = confirm(`Slette ${fmtDate(dato)} fra vaktplanen? Dette fjerner alle påmeldinger for denne dagen.`);
+  if (!bekreft) return;
+  const { error } = await sb.from('fr_vakter').delete().eq('dato', dato);
+  if (error) { alert('Kunne ikke slette dagen: ' + error.message); return; }
+  await loadShifts();
+  renderPeriods();
+}
+window.deleteVaktDag = deleteVaktDag;
 
 async function dinnerIn(middagId) {
   if (!mittNavnId) return;

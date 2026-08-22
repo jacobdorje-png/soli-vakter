@@ -620,12 +620,14 @@ function renderPeriods() {
   let prevSluttDato = null;
 
   relevant.forEach(u => {
-    const periodVakter = vakter.filter(v => {
-      if (v.dato < today) return false;
+    // alle vakter i perioden (også de som har passert) - brukes for å finne den ekte åpningsdagen
+    const periodVakterAlle = vakter.filter(v => {
       if (u.start_dato && v.dato < u.start_dato) return false;
       if (u.slutt_dato && v.dato > u.slutt_dato) return false;
       return true;
     }).sort((a, b) => a.dato.localeCompare(b.dato));
+    // bare de som faktisk vises (i dag og fremover)
+    const periodVakter = periodVakterAlle.filter(v => v.dato >= today);
     periodVakter.forEach(v => usedVaktIds.add(v.id));
 
     // gap-label mellom forrige periode og denne
@@ -647,7 +649,9 @@ function renderPeriods() {
     // grupper vakter i denne perioden på dato (normalt én rad per dato)
     const byDate = {};
     periodVakter.forEach(v => { (byDate[v.dato] = byDate[v.dato] || []).push(v); });
-    const openingDate = periodVakter.length ? periodVakter[0].dato : null;
+    // åpningsdagen er den aller første datoen i perioden, selv om den har passert
+    // (da skal ingen dager lenger vises som "åpningsdag" - den er bare vanlig åpen)
+    const openingDate = periodVakterAlle.length ? periodVakterAlle[0].dato : null;
     const dayRowsHtml = Object.keys(byDate).sort().map(d => dayRowHtml(d, byDate[d], today, d === openingDate)).join('')
       || '<div class="empty-slot">Ingen vakter lagt inn for denne perioden ennå.</div>';
 

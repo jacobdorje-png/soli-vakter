@@ -389,6 +389,14 @@
         </div>
       </div>
       <div class="admin-block">
+        <h3>Enkeltdag</h3>
+        <div class="admin-form">
+          <input type="date" id="new-day-dato" title="Dato">
+          <button class="claim-btn" onclick="addSingleDay()">Legg til dag</button>
+        </div>
+        <p class="hint" style="margin-top:8px;">Legger til én enkelt vaktdag i vaktplanen. Dagen havner automatisk under riktig utstillingsperiode ut fra datoen.</p>
+      </div>
+      <div class="admin-block">
         <h3>Åpningsmiddager</h3>
         <div class="admin-form">
           <input type="date" id="new-mid-dato" title="Dato">
@@ -734,6 +742,20 @@ async function deleteVaktDag(dato) {
   renderPeriods();
 }
 window.deleteVaktDag = deleteVaktDag;
+
+async function addSingleDay() {
+  const inp = document.getElementById('new-day-dato');
+  const dato = inp.value;
+  if (!dato) { alert('Velg en dato'); return; }
+  const finnes = vakter.some(v => v.dato === dato);
+  if (finnes) { alert('Denne dagen finnes allerede i vaktplanen.'); return; }
+  const { error } = await sb.from('fr_vakter').insert({ dato });
+  if (error) { alert('Kunne ikke legge til dagen: ' + error.message); return; }
+  inp.value = '';
+  await loadShifts();
+  renderPeriods();
+}
+window.addSingleDay = addSingleDay;
 
 async function dinnerIn(middagId) {
   if (!mittNavnId) return;

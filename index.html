@@ -424,9 +424,14 @@ function fmtDate(iso) {
   const d = new Date(iso + "T00:00:00");
   return `${WEEKDAYS[d.getDay()]} ${d.getDate()}. ${MONTHS[d.getMonth()]}`;
 }
+function toIsoLocal(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 function todayIso() {
-  const d = new Date();
-  return d.toISOString().slice(0,10);
+  return toIsoLocal(new Date());
 }
 
 let ansatte = [];
@@ -796,7 +801,7 @@ function openDaysBetween(startIso, endIso) {
   const end = new Date(endIso + 'T00:00:00');
   while (d <= end) {
     const wd = d.getDay(); // 0 søn, 4 tors, 5 fre, 6 lør
-    if ([0,4,5,6].includes(wd)) days.push(d.toISOString().slice(0,10));
+    if ([0,4,5,6].includes(wd)) days.push(toIsoLocal(d));
     d.setDate(d.getDate() + 1);
   }
   return days;

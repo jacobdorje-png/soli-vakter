@@ -469,6 +469,13 @@
     <p class="sub" id="sted-sub"></p>
   </header>
 
+  <section id="admin-section">
+    <h2>Administrer</h2>
+    <button class="admin-toggle" id="admin-toggle-btn" onclick="toggleAdmin()">Legg til ny utstilling / middag</button>
+    <p class="hint" id="admin-hint">Tips: du kan klikke direkte på navnet til en utstilling over for å endre navn, datoer eller sette den som aktiv. Klikk på klokkeslettet under en dag for å sette et eget tidspunkt for den dagen.</p>
+    <div id="admin-panel" class="admin-panel"></div>
+  </section>
+
   <div class="whoami">
     <label>Jeg er:</label>
     <div id="who-buttons" class="who-buttons"></div>
@@ -483,13 +490,6 @@
 
   <section id="periods-section">
     <div id="periods-list" class="loading">Laster …</div>
-  </section>
-
-  <section id="admin-section">
-    <h2>Administrer</h2>
-    <button class="admin-toggle" id="admin-toggle-btn" onclick="toggleAdmin()">Legg til ny utstilling / middag</button>
-    <p class="hint" id="admin-hint">Tips: du kan klikke direkte på navnet til en utstilling over for å endre navn, datoer eller sette den som aktiv. Klikk på klokkeslettet under en dag for å sette et eget tidspunkt for den dagen.</p>
-    <div id="admin-panel" class="admin-panel"></div>
   </section>
 
   <footer class="foot">Soli Brug · enkel skiftoversikt</footer>
@@ -569,9 +569,11 @@ function selectSted(slug) {
   closingDato = null;
   kalenderDays = 21;
 
-  document.getElementById('admin-toggle-btn').textContent = sted.visning === 'kalender' ? 'Legg til utstilling / hendelse' : 'Legg til ny utstilling / middag';
+  document.getElementById('admin-toggle-btn').textContent = sted.visning === 'kalender'
+    ? (sted.slug === 'smia' ? 'Legg til hendelse' : 'Legg til utstilling / hendelse')
+    : 'Legg til ny utstilling / middag';
   document.getElementById('admin-hint').textContent = sted.visning === 'kalender'
-    ? 'Tips: klikk «Steng dagen» på en dato for å markere den som stengt (med valgfri årsak), og «Åpne igjen» for å åpne den. Grønt navn betyr at man jobber, rødt betyr at man ikke kan denne dagen – man kan også merke seg som «borte» hvis man jobber men ikke er fysisk på stedet.'
+    ? 'Tips: klikk «Steng dagen» på en dato for å markere den som stengt (med valgfri årsak), og «Åpne igjen» for å åpne den. Grønt navn betyr at man jobber, rødt betyr at man ikke kan denne dagen – man kan også merke seg som «borte» hvis man jobber men ikke er fysisk på stedet.' + (sted.slug === 'smia' ? ' Utstillinger administreres på Soli-fanen og vises automatisk her også.' : '')
     : 'Tips: du kan klikke direkte på navnet til en utstilling over for å endre navn, datoer eller sette den som aktiv. Klikk på klokkeslettet under en dag for å sette et eget tidspunkt for den dagen.';
   renderLegend();
 
@@ -714,8 +716,17 @@ let vakter = [];
 let middager = [];
 let paameldinger = [];
 
+// Smia har ingen egen utstillingsadministrasjon - den følger Soli sine utstillinger
+function exhibitionSourceStedId() {
+  if (currentSted.slug === 'smia') {
+    const soli = steder.find(s => s.slug === 'soli');
+    if (soli) return soli.id;
+  }
+  return currentSted.id;
+}
+
 async function loadExhibitions() {
-  const { data, error } = await sb.from('fr_utstillinger').select('*').eq('sted_id', currentSted.id).order('start_dato', { nullsFirst: true });
+  const { data, error } = await sb.from('fr_utstillinger').select('*').eq('sted_id', exhibitionSourceStedId()).order('start_dato', { nullsFirst: true });
   if (error) { console.error(error); return; }
   utstillinger = data || [];
 }
@@ -1144,7 +1155,12 @@ function renderAdminPanel() {
   const panel = document.getElementById('admin-panel');
   if (!panel) return;
   if (currentSted.visning === 'kalender') {
-    panel.innerHTML = `
+    const erSmia = currentSted.slug === 'smia';
+    const utstillingBlockHtml = erSmia ? `
+      <div class="admin-block">
+        <h3>Utstilling</h3>
+        <p class="hint" style="margin-top:0;">Smia har ingen egen utstillingsadministrasjon - utstillingene fra Soli vises automatisk her også. Legg til eller endre utstillinger på Soli-fanen.</p>
+      </div>` : `
       <div class="admin-block">
         <h3>Ny utstilling</h3>
         <div class="admin-form">
@@ -1154,7 +1170,9 @@ function renderAdminPanel() {
           <button class="claim-btn" onclick="addExhibitionKalender()">Legg til</button>
         </div>
         <p class="hint" style="margin-top:8px;">Utstillingen vises med liten tekst på alle datoene den varer. Det kan være flere pågående utstillinger samtidig.</p>
-      </div>
+      </div>`;
+    panel.innerHTML = `
+      ${utstillingBlockHtml}
       <div class="admin-block">
         <h3>Ny hendelse</h3>
         <div class="admin-form">

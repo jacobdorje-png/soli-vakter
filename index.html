@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Soli Brug Fredrikstad – Skiftplan</title>
+<title>Soli Brug – Skiftplan</title>
 <style>
   @font-face {
     font-family: 'Proxima Nova';
@@ -29,6 +29,7 @@
     --c-teal: #4a8884;
     --c-teal-bg: #e2eeed;
     --c-teal-bd: #bcdad7;
+    --accent: #4a8884;
   }
   * { box-sizing: border-box; }
   html, body {
@@ -53,11 +54,32 @@
     color: #8a8880;
     font-size: 14px;
   }
+  .sted-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 14px 0 10px;
+    flex-wrap: wrap;
+  }
+  .sted-tab {
+    padding: 7px 18px;
+    border-radius: 999px;
+    border: 1px solid #d8d6cd;
+    background: #fff;
+    font-size: 14px;
+    color: #2b2a28;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 300;
+  }
+  .sted-tab:hover { background: #f0efe9; }
+  .sted-tab.active.farge-blue { background: var(--c-blue); border-color: var(--c-blue); color: #f4f6f9; }
+  .sted-tab.active.farge-teal { background: var(--c-teal); border-color: var(--c-teal); color: #f1f8f7; }
+  .sted-tab.active.farge-orange { background: var(--c-orange); border-color: var(--c-orange); color: #fff6ea; }
   .whoami {
     margin: 20px 0 32px;
     background: #f8f7f4;
     border: 1px solid #e2e0d9;
-    border-left: 4px solid var(--c-plum);
+    border-left: 4px solid var(--accent);
     border-radius: 10px;
     padding: 14px 16px;
     display: flex;
@@ -85,6 +107,7 @@
     font-weight: 300;
   }
   .who-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+  .who-pill-wrap { display: inline-flex; align-items: center; gap: 2px; }
   .who-btn {
     padding: 7px 16px;
     border-radius: 999px;
@@ -98,15 +121,25 @@
   }
   .who-btn:hover { background: var(--c-plum-bg); border-color: var(--c-plum-bd); }
   .who-btn.selected {
-    background: var(--c-plum);
+    background: var(--accent);
     color: #fbf8fb;
-    border-color: var(--c-plum);
+    border-color: var(--accent);
   }
   .who-btn.who-add {
     background: none;
     border-style: dashed;
     color: #8a8880;
   }
+  .who-remove {
+    background: none;
+    border: none;
+    color: #b6b3a8;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 4px;
+    line-height: 1;
+  }
+  .who-remove:hover { color: #b04a3c; }
   .who-add-form {
     display: flex;
     align-items: center;
@@ -144,7 +177,7 @@
 
   .period-block { margin-bottom: 34px; }
   .period-header { margin-bottom: 10px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-  .period-header .pname { font-size: 18px; color: var(--c-teal); font-weight: 400; }
+  .period-header .pname { font-size: 18px; color: var(--accent); font-weight: 400; }
   .period-header .pdates { font-size: 13px; color: #8a8880; }
   .period-header .badge {
     font-size: 11px;
@@ -217,6 +250,8 @@
     border-radius: 10px;
     padding: 12px 16px;
     margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   .day-row.status-red { background: var(--c-red-bg); border-color: var(--c-red-bd); border-left-color: var(--c-red); }
   .day-row.status-green { background: var(--c-green-bg); border-color: var(--c-green-bd); border-left-color: var(--c-green); }
@@ -225,6 +260,31 @@
   .day-left .weekday { font-size: 15px; }
   .day-left .datestr { font-size: 12px; color: #8a8880; }
   .day-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .tid-tag {
+    font-size: 12px;
+    color: #8a8880;
+    cursor: pointer;
+    margin-top: 2px;
+    display: inline-block;
+  }
+  .tid-tag:hover { text-decoration: underline; }
+  .tid-tag.custom { color: var(--accent); }
+  .tid-edit {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+  .tid-edit input[type=time] {
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid #d8d6cd;
+    font-size: 12px;
+    font-family: inherit;
+    color: #2b2a28;
+    background: #fff;
+  }
   .tag {
     background: #e7e5dd;
     color: #4a4842;
@@ -335,7 +395,7 @@
     border-radius: 10px;
     padding: 12px 14px;
   }
-  .admin-form input[type=text], .admin-form input[type=date], .admin-form select {
+  .admin-form input[type=text], .admin-form input[type=date], .admin-form input[type=time], .admin-form select {
     padding: 7px 10px;
     border-radius: 6px;
     border: 1px solid #d8d6cd;
@@ -353,8 +413,9 @@
 <div class="wrap">
 
   <header class="top">
-    <h1>Soli Brug — Fredrikstad</h1>
-    <p class="sub">Åpent torsdag–søndag, kl. 12–16</p>
+    <h1>Soli Brug</h1>
+    <div class="sted-tabs" id="sted-tabs"></div>
+    <p class="sub" id="sted-sub"></p>
   </header>
 
   <div class="whoami">
@@ -376,7 +437,7 @@
   <section id="admin-section">
     <h2>Administrer</h2>
     <button class="admin-toggle" id="admin-toggle-btn" onclick="toggleAdmin()">Legg til ny utstilling / middag</button>
-    <p class="hint">Tips: du kan klikke direkte på navnet til en utstilling over for å endre navn, datoer eller sette den som aktiv.</p>
+    <p class="hint">Tips: du kan klikke direkte på navnet til en utstilling over for å endre navn, datoer eller sette den som aktiv. Klikk på klokkeslettet under en dag for å sette et eget tidspunkt for den dagen.</p>
     <div id="admin-panel" class="admin-panel">
       <div class="admin-block">
         <h3>Ny utstilling</h3>
@@ -384,7 +445,7 @@
           <input type="text" id="new-ex-navn" placeholder="Navn på utstilling">
           <input type="date" id="new-ex-start" title="Startdato">
           <input type="date" id="new-ex-slutt" title="Sluttdato">
-          <label class="check"><input type="checkbox" id="new-ex-genvakter" checked> Lag vakter automatisk (tors–søn i perioden)</label>
+          <label class="check"><input type="checkbox" id="new-ex-genvakter" checked> Lag vakter automatisk (på stedets åpningsdager i perioden)</label>
           <button class="claim-btn" onclick="addExhibition()">Legg til</button>
         </div>
       </div>
@@ -392,9 +453,11 @@
         <h3>Enkeltdag</h3>
         <div class="admin-form">
           <input type="date" id="new-day-dato" title="Dato">
+          <input type="time" id="new-day-fra" title="Fra kl. (valgfritt)">
+          <input type="time" id="new-day-til" title="Til kl. (valgfritt)">
           <button class="claim-btn" onclick="addSingleDay()">Legg til dag</button>
         </div>
-        <p class="hint" style="margin-top:8px;">Legger til én enkelt vaktdag i vaktplanen. Dagen havner automatisk under riktig utstillingsperiode ut fra datoen.</p>
+        <p class="hint" style="margin-top:8px;">Legger til én enkelt vaktdag i vaktplanen. Dagen havner automatisk under riktig utstillingsperiode ut fra datoen. La klokkeslettene stå tomme for å bruke stedets vanlige åpningstid.</p>
       </div>
       <div class="admin-block">
         <h3>Åpningsmiddager</h3>
@@ -408,7 +471,7 @@
     </div>
   </section>
 
-  <footer class="foot">Soli Brug Fredrikstad · enkel skiftoversikt</footer>
+  <footer class="foot">Soli Brug · enkel skiftoversikt</footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -419,6 +482,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const WEEKDAYS = ["søndag","mandag","tirsdag","onsdag","torsdag","fredag","lørdag"];
 const MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
+const FARGE_HEX = { blue: "#5f7ea3", teal: "#4a8884", orange: "#c1832f" };
 
 function fmtDate(iso) {
   const d = new Date(iso + "T00:00:00");
@@ -434,14 +498,75 @@ function todayIso() {
   return toIsoLocal(new Date());
 }
 
+// ---------- Steder (Soli / Fredrikstad / Smia) ----------
+let steder = [];
+let currentSted = null;
+
+function mittNavnKey() {
+  return 'skiftplan_ansatt_id_' + currentSted.slug;
+}
+
+async function loadSteder() {
+  const { data, error } = await sb.from('fr_steder').select('*').order('sort_order');
+  if (error) { console.error(error); return; }
+  steder = data || [];
+}
+
+function renderStedTabs() {
+  const el = document.getElementById('sted-tabs');
+  el.innerHTML = steder.map(s => `<button type="button" class="sted-tab farge-${s.farge} ${s.id === currentSted.id ? 'active' : ''}" onclick="selectSted('${s.slug}')">${s.navn}</button>`).join('');
+}
+
+function selectSted(slug) {
+  const sted = steder.find(s => s.slug === slug);
+  if (!sted) return;
+  currentSted = sted;
+  localStorage.setItem('skiftplan_sted', slug);
+  document.title = `Soli Brug – ${sted.navn}`;
+  document.getElementById('sted-sub').textContent = sted.aapningstider_tekst;
+  document.documentElement.style.setProperty('--accent', FARGE_HEX[sted.farge] || FARGE_HEX.teal);
+  renderStedTabs();
+
+  // nullstill transiente UI-tilstander fra forrige sted
+  editingExhibitionId = null;
+  editingTidDato = null;
+  addingPerson = false;
+
+  // migrer gammel, ikke-stedbundet navnevalg for Fredrikstad (fra før faner fantes)
+  let key = mittNavnKey();
+  let saved = localStorage.getItem(key);
+  if (!saved && slug === 'fredrikstad') {
+    const legacy = localStorage.getItem('soli_ansatt_id');
+    if (legacy) {
+      saved = legacy;
+      localStorage.setItem(key, legacy);
+    }
+  }
+  mittNavnId = saved || '';
+
+  refreshStedData();
+}
+window.selectSted = selectSted;
+
+async function refreshStedData() {
+  document.getElementById('periods-list').innerHTML = '<div class="loading">Laster …</div>';
+  await loadAnsatte();
+  await loadExhibitions();
+  await loadShifts();
+  await loadDinners();
+  populateDinnerExhibitionSelect();
+  renderPeriods();
+}
+
+// ---------- Ansatte (navn) ----------
 let ansatte = [];
-let mittNavnId = localStorage.getItem('soli_ansatt_id') || '';
+let mittNavnId = '';
 
 let addingPerson = false;
 
 function renderWhoButtons() {
   const el = document.getElementById('who-buttons');
-  let html = ansatte.map(a => `<button type="button" class="who-btn ${a.id === mittNavnId ? 'selected' : ''}" onclick="setMittNavn('${a.id}')">${a.navn}</button>`).join('');
+  let html = ansatte.map(a => `<span class="who-pill-wrap"><button type="button" class="who-btn ${a.id === mittNavnId ? 'selected' : ''}" onclick="setMittNavn('${a.id}')">${a.navn}</button><button type="button" class="who-remove" title="Ta vekk ${a.navn.replace(/"/g,'&quot;')}" onclick="removeAnsatt('${a.id}')">✕</button></span>`).join('');
   if (addingPerson) {
     html += `<span class="who-add-form">
       <input type="text" id="new-ansatt-navn" placeholder="Navn">
@@ -463,7 +588,7 @@ function renderWhoButtons() {
 
 function setMittNavn(id) {
   mittNavnId = (id === mittNavnId) ? '' : id; // klikk igjen for å velge bort seg selv
-  localStorage.setItem('soli_ansatt_id', mittNavnId);
+  localStorage.setItem(mittNavnKey(), mittNavnId);
   renderWhoButtons();
   renderPeriods();
 }
@@ -485,21 +610,36 @@ async function addAnsatt() {
   const inp = document.getElementById('new-ansatt-navn');
   const navn = inp.value.trim();
   if (!navn) return;
-  const { data, error } = await sb.from('fr_ansatte').insert({ navn, aktiv: true }).select();
+  const { data, error } = await sb.from('fr_ansatte').insert({ navn, aktiv: true, sted_id: currentSted.id }).select();
   if (error) { alert('Kunne ikke legge til navn: ' + error.message); return; }
   addingPerson = false;
   await loadAnsatte();
   if (data && data[0]) {
     mittNavnId = data[0].id;
-    localStorage.setItem('soli_ansatt_id', mittNavnId);
+    localStorage.setItem(mittNavnKey(), mittNavnId);
   }
   renderWhoButtons();
   renderPeriods();
 }
 window.addAnsatt = addAnsatt;
 
+async function removeAnsatt(id) {
+  const navn = navnFor(id);
+  const ok = confirm(`Ta vekk ${navn} fra listen over ${currentSted.navn}?`);
+  if (!ok) return;
+  const { error } = await sb.from('fr_ansatte').update({ aktiv: false }).eq('id', id);
+  if (error) { alert('Kunne ikke ta vekk navn: ' + error.message); return; }
+  if (mittNavnId === id) {
+    mittNavnId = '';
+    localStorage.removeItem(mittNavnKey());
+  }
+  await loadAnsatte();
+  renderPeriods();
+}
+window.removeAnsatt = removeAnsatt;
+
 async function loadAnsatte() {
-  const { data, error } = await sb.from('fr_ansatte').select('*').eq('aktiv', true).order('navn');
+  const { data, error } = await sb.from('fr_ansatte').select('*').eq('sted_id', currentSted.id).eq('aktiv', true).order('navn');
   if (error) { console.error(error); return; }
   ansatte = data || [];
   if (mittNavnId && !ansatte.find(a => a.id === mittNavnId)) {
@@ -519,25 +659,67 @@ let middager = [];
 let paameldinger = [];
 
 async function loadExhibitions() {
-  const { data, error } = await sb.from('fr_utstillinger').select('*').order('start_dato', { nullsFirst: true });
+  const { data, error } = await sb.from('fr_utstillinger').select('*').eq('sted_id', currentSted.id).order('start_dato', { nullsFirst: true });
   if (error) { console.error(error); return; }
   utstillinger = data || [];
 }
 
 async function loadShifts() {
-  const { data, error } = await sb.from('fr_vakter').select('*').order('dato');
+  const { data, error } = await sb.from('fr_vakter').select('*').eq('sted_id', currentSted.id).order('dato');
   if (error) { console.error(error); return; }
   vakter = data || [];
 }
 
 async function loadDinners() {
-  const { data, error } = await sb.from('fr_middager').select('*').order('dato');
+  const { data, error } = await sb.from('fr_middager').select('*').eq('sted_id', currentSted.id).order('dato');
   if (error) { console.error(error); return; }
   middager = data || [];
   const { data: pdata, error: perror } = await sb.from('fr_middag_paameldinger').select('*');
   if (perror) { console.error(perror); return; }
   paameldinger = pdata || [];
 }
+
+// Henter visningstid (standard for stedet, eller eget tidspunkt satt for denne dagen)
+function tidForRows(rows) {
+  const custom = rows.find(r => r.fra_tid || r.til_tid);
+  const fra = (custom && custom.fra_tid) || currentSted.std_fra_tid;
+  const til = (custom && custom.til_tid) || currentSted.std_til_tid;
+  return { fra: fra.slice(0, 5), til: til.slice(0, 5), erCustom: !!custom, customFra: custom ? custom.fra_tid : '', customTil: custom ? custom.til_tid : '' };
+}
+
+let editingTidDato = null;
+
+function startEditTid(dato) {
+  editingTidDato = dato;
+  renderPeriods();
+}
+window.startEditTid = startEditTid;
+
+function cancelEditTid() {
+  editingTidDato = null;
+  renderPeriods();
+}
+window.cancelEditTid = cancelEditTid;
+
+async function saveTid(dato) {
+  const fra = document.getElementById('tid-fra-' + dato).value || null;
+  const til = document.getElementById('tid-til-' + dato).value || null;
+  const { error } = await sb.from('fr_vakter').update({ fra_tid: fra, til_tid: til }).eq('dato', dato).eq('sted_id', currentSted.id);
+  if (error) { alert('Kunne ikke lagre tidspunkt: ' + error.message); return; }
+  editingTidDato = null;
+  await loadShifts();
+  renderPeriods();
+}
+window.saveTid = saveTid;
+
+async function resetTid(dato) {
+  const { error } = await sb.from('fr_vakter').update({ fra_tid: null, til_tid: null }).eq('dato', dato).eq('sted_id', currentSted.id);
+  if (error) { alert('Kunne ikke nullstille tidspunkt: ' + error.message); return; }
+  editingTidDato = null;
+  await loadShifts();
+  renderPeriods();
+}
+window.resetTid = resetTid;
 
 // Bygger dag-rad HTML for skiftplanen (samme visning som før, nå gjenbrukt per utstillingsperiode)
 function dayRowHtml(dato, rows, today, isOpeningDay) {
@@ -561,9 +743,23 @@ function dayRowHtml(dato, rows, today, isOpeningDay) {
   }
   const openingTag = isOpeningDay ? '<span class="tag opening-tag">Åpningsdag</span>' : '';
   const deleteBtn = `<button class="del-day-btn" onclick="deleteVaktDag('${dato}')" title="Slett denne dagen fra vaktplanen">🗑 Slett dag</button>`;
+
+  const tid = tidForRows(rows);
+  const tidHtml = editingTidDato === dato ? `
+      <span class="tid-edit">
+        <input type="time" id="tid-fra-${dato}" value="${tid.customFra}">
+        <span>–</span>
+        <input type="time" id="tid-til-${dato}" value="${tid.customTil}">
+        <button class="small-btn" onclick="saveTid('${dato}')">Lagre</button>
+        ${tid.erCustom ? `<button class="small-btn" onclick="resetTid('${dato}')">Nullstill</button>` : ''}
+        <button class="small-btn" onclick="cancelEditTid()">Avbryt</button>
+      </span>` : `
+      <span class="tid-tag ${tid.erCustom ? 'custom' : ''}" onclick="startEditTid('${dato}')" title="Klikk for å sette eget tidspunkt denne dagen">kl. ${tid.fra}–${tid.til}${tid.erCustom ? ' ✎' : ''}</span>`;
+
   return `<div class="day-row ${statusClass} ${isToday ? 'today' : ''}">
     <div class="day-left">
       <div class="weekday">${fmtDate(dato)}${isToday ? ' · i dag' : ''}</div>
+      ${tidHtml}
     </div>
     <div class="day-right">${openingTag}${tagsHtml}${claimBtn}${deleteBtn}</div>
   </div>`;
@@ -722,7 +918,7 @@ async function claim(dato, rowId) {
     const { error } = await sb.from('fr_vakter').update({ ansatt_id: mittNavnId }).eq('id', rowId);
     if (error) { alert('Kunne ikke melde deg på: ' + error.message); return; }
   } else {
-    const { error } = await sb.from('fr_vakter').insert({ dato, ansatt_id: mittNavnId });
+    const { error } = await sb.from('fr_vakter').insert({ dato, ansatt_id: mittNavnId, sted_id: currentSted.id });
     if (error) { alert('Kunne ikke melde deg på: ' + error.message); return; }
   }
   await loadShifts();
@@ -741,7 +937,7 @@ window.unclaim = unclaim;
 async function deleteVaktDag(dato) {
   const bekreft = confirm(`Slette ${fmtDate(dato)} fra vaktplanen? Dette fjerner alle påmeldinger for denne dagen.`);
   if (!bekreft) return;
-  const { error } = await sb.from('fr_vakter').delete().eq('dato', dato);
+  const { error } = await sb.from('fr_vakter').delete().eq('dato', dato).eq('sted_id', currentSted.id);
   if (error) { alert('Kunne ikke slette dagen: ' + error.message); return; }
   await loadShifts();
   renderPeriods();
@@ -752,11 +948,17 @@ async function addSingleDay() {
   const inp = document.getElementById('new-day-dato');
   const dato = inp.value;
   if (!dato) { alert('Velg en dato'); return; }
+  const fraInp = document.getElementById('new-day-fra');
+  const tilInp = document.getElementById('new-day-til');
+  const fra = fraInp.value || null;
+  const til = tilInp.value || null;
   const finnes = vakter.some(v => v.dato === dato);
   if (finnes) { alert('Denne dagen finnes allerede i vaktplanen.'); return; }
-  const { error } = await sb.from('fr_vakter').insert({ dato });
+  const { error } = await sb.from('fr_vakter').insert({ dato, sted_id: currentSted.id, fra_tid: fra, til_tid: til });
   if (error) { alert('Kunne ikke legge til dagen: ' + error.message); return; }
   inp.value = '';
+  fraInp.value = '';
+  tilInp.value = '';
   await loadShifts();
   renderPeriods();
 }
@@ -799,9 +1001,10 @@ function openDaysBetween(startIso, endIso) {
   const days = [];
   let d = new Date(startIso + 'T00:00:00');
   const end = new Date(endIso + 'T00:00:00');
+  const apne = new Set(currentSted.apne_ukedager);
   while (d <= end) {
-    const wd = d.getDay(); // 0 søn, 4 tors, 5 fre, 6 lør
-    if ([0,4,5,6].includes(wd)) days.push(toIsoLocal(d));
+    const wd = d.getDay();
+    if (apne.has(wd)) days.push(toIsoLocal(d));
     d.setDate(d.getDate() + 1);
   }
   return days;
@@ -814,13 +1017,13 @@ async function addExhibition() {
   const gen = document.getElementById('new-ex-genvakter').checked;
   if (!navn || !start || !slutt) { alert('Fyll ut navn, startdato og sluttdato'); return; }
   if (start > slutt) { alert('Startdato må være før sluttdato'); return; }
-  const { data, error } = await sb.from('fr_utstillinger').insert({ navn, start_dato: start, slutt_dato: slutt, aktiv: false }).select();
+  const { data, error } = await sb.from('fr_utstillinger').insert({ navn, start_dato: start, slutt_dato: slutt, aktiv: false, sted_id: currentSted.id }).select();
   if (error) { alert('Kunne ikke legge til: ' + error.message); return; }
   if (gen) {
     const days = openDaysBetween(start, slutt);
-    const { data: existing } = await sb.from('fr_vakter').select('dato').in('dato', days);
+    const { data: existing } = await sb.from('fr_vakter').select('dato').eq('sted_id', currentSted.id).in('dato', days);
     const existingSet = new Set((existing || []).map(r => r.dato));
-    const toInsert = days.filter(d => !existingSet.has(d)).map(d => ({ dato: d }));
+    const toInsert = days.filter(d => !existingSet.has(d)).map(d => ({ dato: d, sted_id: currentSted.id }));
     if (toInsert.length) {
       const { error: verr } = await sb.from('fr_vakter').insert(toInsert);
       if (verr) { alert('Utstilling lagt til, men klarte ikke opprette vakter: ' + verr.message); }
@@ -846,7 +1049,7 @@ async function addDinner() {
   const tittel = document.getElementById('new-mid-tittel').value.trim();
   const utstillingId = document.getElementById('new-mid-utstilling').value || null;
   if (!dato || !tittel) { alert('Fyll ut dato og tittel'); return; }
-  const { error } = await sb.from('fr_middager').insert({ dato, tittel, utstilling_id: utstillingId });
+  const { error } = await sb.from('fr_middager').insert({ dato, tittel, utstilling_id: utstillingId, sted_id: currentSted.id });
   if (error) { alert('Kunne ikke legge til middag: ' + error.message); return; }
   document.getElementById('new-mid-dato').value = '';
   document.getElementById('new-mid-tittel').value = '';
@@ -856,12 +1059,14 @@ async function addDinner() {
 window.addDinner = addDinner;
 
 (async function init() {
-  await loadAnsatte();
-  await loadExhibitions();
-  await loadShifts();
-  await loadDinners();
-  populateDinnerExhibitionSelect();
-  renderPeriods();
+  await loadSteder();
+  if (!steder.length) {
+    document.getElementById('periods-list').innerHTML = '<div class="empty-slot">Fant ingen steder i databasen.</div>';
+    return;
+  }
+  const savedSlug = localStorage.getItem('skiftplan_sted');
+  const initialSlug = steder.find(s => s.slug === savedSlug) ? savedSlug : (steder.find(s => s.slug === 'fredrikstad') ? 'fredrikstad' : steder[0].slug);
+  selectSted(initialSlug);
 })();
 </script>
 </body>

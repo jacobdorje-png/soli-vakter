@@ -75,6 +75,8 @@
   .sted-tab.active.farge-blue { background: var(--c-blue); border-color: var(--c-blue); color: #f4f6f9; }
   .sted-tab.active.farge-teal { background: var(--c-teal); border-color: var(--c-teal); color: #f1f8f7; }
   .sted-tab.active.farge-orange { background: var(--c-orange); border-color: var(--c-orange); color: #fff6ea; }
+  .sted-tab.active.farge-green { background: var(--c-green); border-color: var(--c-green); color: #eef6ec; }
+  .sted-tab.active.farge-red { background: var(--c-red); border-color: var(--c-red); color: #fbeeec; }
   .whoami {
     margin: 20px 0 32px;
     background: #f8f7f4;
@@ -102,6 +104,8 @@
   .legend .dot-red { background: var(--c-red); }
   .legend .dot-orange { background: var(--c-orange); }
   .legend .dot-blue { background: var(--c-blue); }
+  .legend .dot-plum { background: var(--c-plum); }
+  .legend .dot-grey { background: #b6b3a8; }
   select, button {
     font-family: inherit;
     font-weight: 300;
@@ -407,6 +411,25 @@
   .admin-form input[type=text] { flex: 1 1 160px; }
   .admin-form label.check { font-size: 12px; color: #6d6b63; display:flex; align-items:center; gap:6px; }
   .admin-edit-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag.work { background: var(--c-green-bg); color: var(--c-green); }
+  .tag.work.borte { background: var(--c-plum-bg); color: var(--c-plum); }
+  .tag.unavail { background: var(--c-red-bg); color: var(--c-red); }
+  .exhib-notes { margin: 6px 0 8px; }
+  .exhib-note { font-size: 12px; color: #a8a498; margin: 2px 0; }
+  .exhib-note.special { color: var(--accent); }
+  .kal-day {
+    background: #f8f7f4;
+    border: 1px solid #e2e0d9;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .kal-day.today { box-shadow: 0 0 0 1px #b9b6ab inset; }
+  .kal-day-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .kal-day-head .weekday { font-size: 15px; }
+  .kal-closed { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+  .kal-people { margin-top: 10px; }
+  .kal-people-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 </style>
 </head>
 <body>
@@ -423,7 +446,7 @@
     <div id="who-buttons" class="who-buttons"></div>
   </div>
 
-  <div class="legend">
+  <div class="legend" id="legend">
     <span><i class="dot dot-green"></i> fullt bemannet</span>
     <span><i class="dot dot-red"></i> ingen påmeldt</span>
     <span><i class="dot dot-orange"></i> åpningsdag, trenger minst 2</span>
@@ -437,38 +460,8 @@
   <section id="admin-section">
     <h2>Administrer</h2>
     <button class="admin-toggle" id="admin-toggle-btn" onclick="toggleAdmin()">Legg til ny utstilling / middag</button>
-    <p class="hint">Tips: du kan klikke direkte på navnet til en utstilling over for å endre navn, datoer eller sette den som aktiv. Klikk på klokkeslettet under en dag for å sette et eget tidspunkt for den dagen.</p>
-    <div id="admin-panel" class="admin-panel">
-      <div class="admin-block">
-        <h3>Ny utstilling</h3>
-        <div class="admin-form">
-          <input type="text" id="new-ex-navn" placeholder="Navn på utstilling">
-          <input type="date" id="new-ex-start" title="Startdato">
-          <input type="date" id="new-ex-slutt" title="Sluttdato">
-          <label class="check"><input type="checkbox" id="new-ex-genvakter" checked> Lag vakter automatisk (på stedets åpningsdager i perioden)</label>
-          <button class="claim-btn" onclick="addExhibition()">Legg til</button>
-        </div>
-      </div>
-      <div class="admin-block">
-        <h3>Enkeltdag</h3>
-        <div class="admin-form">
-          <input type="date" id="new-day-dato" title="Dato">
-          <input type="time" id="new-day-fra" title="Fra kl. (valgfritt)">
-          <input type="time" id="new-day-til" title="Til kl. (valgfritt)">
-          <button class="claim-btn" onclick="addSingleDay()">Legg til dag</button>
-        </div>
-        <p class="hint" style="margin-top:8px;">Legger til én enkelt vaktdag i vaktplanen. Dagen havner automatisk under riktig utstillingsperiode ut fra datoen. La klokkeslettene stå tomme for å bruke stedets vanlige åpningstid.</p>
-      </div>
-      <div class="admin-block">
-        <h3>Åpningsmiddager</h3>
-        <div class="admin-form">
-          <input type="date" id="new-mid-dato" title="Dato">
-          <input type="text" id="new-mid-tittel" placeholder="Tittel, f.eks. Åpningsmiddag">
-          <select id="new-mid-utstilling"></select>
-          <button class="claim-btn" onclick="addDinner()">Legg til</button>
-        </div>
-      </div>
-    </div>
+    <p class="hint" id="admin-hint">Tips: du kan klikke direkte på navnet til en utstilling over for å endre navn, datoer eller sette den som aktiv. Klikk på klokkeslettet under en dag for å sette et eget tidspunkt for den dagen.</p>
+    <div id="admin-panel" class="admin-panel"></div>
   </section>
 
   <footer class="foot">Soli Brug · enkel skiftoversikt</footer>
@@ -482,7 +475,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const WEEKDAYS = ["søndag","mandag","tirsdag","onsdag","torsdag","fredag","lørdag"];
 const MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
-const FARGE_HEX = { blue: "#5f7ea3", teal: "#4a8884", orange: "#c1832f" };
+const FARGE_HEX = { blue: "#5f7ea3", teal: "#4a8884", orange: "#c1832f", green: "#4f8a5b", red: "#b6503f" };
 
 function fmtDate(iso) {
   const d = new Date(iso + "T00:00:00");
@@ -531,6 +524,14 @@ function selectSted(slug) {
   editingExhibitionId = null;
   editingTidDato = null;
   addingPerson = false;
+  closingDato = null;
+  kalenderDays = 21;
+
+  document.getElementById('admin-toggle-btn').textContent = sted.visning === 'kalender' ? 'Legg til utstilling / hendelse' : 'Legg til ny utstilling / middag';
+  document.getElementById('admin-hint').textContent = sted.visning === 'kalender'
+    ? 'Tips: klikk «Steng dagen» på en dato for å markere den som stengt (med valgfri årsak), og «Åpne igjen» for å åpne den. Grønt navn betyr at man jobber, rødt betyr at man ikke kan denne dagen – man kan også merke seg som «borte» hvis man jobber men ikke er fysisk på stedet.'
+    : 'Tips: du kan klikke direkte på navnet til en utstilling over for å endre navn, datoer eller sette den som aktiv. Klikk på klokkeslettet under en dag for å sette et eget tidspunkt for den dagen.';
+  renderLegend();
 
   // migrer gammel, ikke-stedbundet navnevalg for Fredrikstad (fra før faner fantes)
   let key = mittNavnKey();
@@ -554,8 +555,21 @@ async function refreshStedData() {
   await loadExhibitions();
   await loadShifts();
   await loadDinners();
-  populateDinnerExhibitionSelect();
-  renderPeriods();
+  if (currentSted.visning === 'kalender') {
+    await loadKalenderData();
+  } else {
+    dagstatus = [];
+    hendelser = [];
+    hendelsePaameldinger = [];
+    utilgjengelig = [];
+  }
+  renderAdminPanel();
+  renderStedList();
+}
+
+function renderStedList() {
+  if (currentSted.visning === 'kalender') renderKalender();
+  else renderPeriods();
 }
 
 // ---------- Ansatte (navn) ----------
@@ -1040,6 +1054,7 @@ window.addExhibition = addExhibition;
 
 function populateDinnerExhibitionSelect() {
   const sel = document.getElementById('new-mid-utstilling');
+  if (!sel) return;
   sel.innerHTML = '<option value="">(ingen bestemt utstilling)</option>' + utstillinger.map(u => `<option value="${u.id}">${u.navn}</option>`).join('');
 }
 
@@ -1056,6 +1071,372 @@ async function addDinner() {
   renderPeriods();
 }
 window.addDinner = addDinner;
+
+// ---------- Kalender-modus (Soli / Smia) ----------
+let dagstatus = [];
+let hendelser = [];
+let hendelsePaameldinger = [];
+let utilgjengelig = [];
+let kalenderDays = 21;
+let closingDato = null;
+
+function renderLegend() {
+  const el = document.getElementById('legend');
+  if (!el) return;
+  if (currentSted.visning === 'kalender') {
+    el.innerHTML = `
+      <span><i class="dot dot-green"></i> jobber</span>
+      <span><i class="dot dot-red"></i> kan ikke denne dagen</span>
+      <span><i class="dot dot-plum"></i> jobber, men borte fra stedet</span>
+      <span><i class="dot dot-grey"></i> stengt</span>`;
+  } else {
+    el.innerHTML = `
+      <span><i class="dot dot-green"></i> fullt bemannet</span>
+      <span><i class="dot dot-red"></i> ingen påmeldt</span>
+      <span><i class="dot dot-orange"></i> åpningsdag, trenger minst 2</span>
+      <span><i class="dot dot-blue"></i> åpningsmiddag</span>`;
+  }
+}
+
+function renderAdminPanel() {
+  const panel = document.getElementById('admin-panel');
+  if (!panel) return;
+  if (currentSted.visning === 'kalender') {
+    panel.innerHTML = `
+      <div class="admin-block">
+        <h3>Ny utstilling</h3>
+        <div class="admin-form">
+          <input type="text" id="new-ex-navn" placeholder="Navn på utstilling">
+          <input type="date" id="new-ex-start" title="Startdato">
+          <input type="date" id="new-ex-slutt" title="Sluttdato">
+          <button class="claim-btn" onclick="addExhibitionKalender()">Legg til</button>
+        </div>
+        <p class="hint" style="margin-top:8px;">Utstillingen vises med liten tekst på alle datoene den varer. Det kan være flere pågående utstillinger samtidig.</p>
+      </div>
+      <div class="admin-block">
+        <h3>Ny hendelse</h3>
+        <div class="admin-form">
+          <input type="date" id="new-hendelse-dato" title="Dato">
+          <input type="text" id="new-hendelse-tittel" placeholder="Tittel, f.eks. Skoleklasse på besøk">
+          <input type="time" id="new-hendelse-fra" title="Fra kl. (valgfritt)">
+          <input type="time" id="new-hendelse-til" title="Til kl. (valgfritt)">
+          <button class="claim-btn" onclick="addHendelse()">Legg til</button>
+        </div>
+        <p class="hint" style="margin-top:8px;">Bruk gjerne et eget klokkeslett hvis hendelsen er før eller etter vanlig åpningstid.</p>
+      </div>`;
+  } else {
+    panel.innerHTML = `
+      <div class="admin-block">
+        <h3>Ny utstilling</h3>
+        <div class="admin-form">
+          <input type="text" id="new-ex-navn" placeholder="Navn på utstilling">
+          <input type="date" id="new-ex-start" title="Startdato">
+          <input type="date" id="new-ex-slutt" title="Sluttdato">
+          <label class="check"><input type="checkbox" id="new-ex-genvakter" checked> Lag vakter automatisk (på stedets åpningsdager i perioden)</label>
+          <button class="claim-btn" onclick="addExhibition()">Legg til</button>
+        </div>
+      </div>
+      <div class="admin-block">
+        <h3>Enkeltdag</h3>
+        <div class="admin-form">
+          <input type="date" id="new-day-dato" title="Dato">
+          <input type="time" id="new-day-fra" title="Fra kl. (valgfritt)">
+          <input type="time" id="new-day-til" title="Til kl. (valgfritt)">
+          <button class="claim-btn" onclick="addSingleDay()">Legg til dag</button>
+        </div>
+        <p class="hint" style="margin-top:8px;">Legger til én enkelt vaktdag i vaktplanen. Dagen havner automatisk under riktig utstillingsperiode ut fra datoen. La klokkeslettene stå tomme for å bruke stedets vanlige åpningstid.</p>
+      </div>
+      <div class="admin-block">
+        <h3>Åpningsmiddager</h3>
+        <div class="admin-form">
+          <input type="date" id="new-mid-dato" title="Dato">
+          <input type="text" id="new-mid-tittel" placeholder="Tittel, f.eks. Åpningsmiddag">
+          <select id="new-mid-utstilling"></select>
+          <button class="claim-btn" onclick="addDinner()">Legg til</button>
+        </div>
+      </div>`;
+    populateDinnerExhibitionSelect();
+  }
+}
+window.renderAdminPanel = renderAdminPanel;
+
+async function loadKalenderData() {
+  const { data: dsData, error: dsErr } = await sb.from('fr_dagstatus').select('*').eq('sted_id', currentSted.id);
+  if (dsErr) { console.error(dsErr); } else { dagstatus = dsData || []; }
+
+  const { data: hData, error: hErr } = await sb.from('fr_hendelser').select('*').eq('sted_id', currentSted.id).order('dato');
+  if (hErr) { console.error(hErr); } else { hendelser = hData || []; }
+
+  const hIds = hendelser.map(h => h.id);
+  if (hIds.length) {
+    const { data: hpData, error: hpErr } = await sb.from('fr_hendelse_paameldinger').select('*').in('hendelse_id', hIds);
+    if (hpErr) { console.error(hpErr); } else { hendelsePaameldinger = hpData || []; }
+  } else {
+    hendelsePaameldinger = [];
+  }
+
+  const { data: uData, error: uErr } = await sb.from('fr_utilgjengelig').select('*').eq('sted_id', currentSted.id);
+  if (uErr) { console.error(uErr); } else { utilgjengelig = uData || []; }
+}
+
+function buildDateRange(startIso, n) {
+  const out = [];
+  let d = new Date(startIso + 'T00:00:00');
+  for (let i = 0; i < n; i++) {
+    out.push(toIsoLocal(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+
+function dateInExhibRange(u, dato) {
+  if (u.start_dato && dato < u.start_dato) return false;
+  if (u.slutt_dato && dato > u.slutt_dato) return false;
+  return true;
+}
+
+function exhibitionNoteFor(u, dato) {
+  if (u.start_dato === dato) return { text: `Åpning av ${u.navn}`, special: true };
+  if (u.slutt_dato === dato) return { text: `Siste utstillingsdag – ${u.navn}`, special: true };
+  return { text: u.navn, special: false };
+}
+
+function hendelseTabHtml(h) {
+  const mine = hendelsePaameldinger.filter(p => p.hendelse_id === h.id);
+  const iAmIn = mine.find(p => p.ansatt_id === mittNavnId);
+  const tags = mine.map(p => `<span class="tag ${p.ansatt_id === mittNavnId ? 'mine' : ''}">${navnFor(p.ansatt_id)}${p.ansatt_id === mittNavnId ? ` <button class="remove" onclick="hendelseUt('${p.id}')">✕</button>` : ''}</span>`).join('');
+  let btn = '';
+  if (mittNavnId && !iAmIn) btn = `<button class="rsvp-btn" onclick="hendelseInn('${h.id}')">+ meld deg på</button>`;
+  else if (!mittNavnId) btn = `<span class="empty-slot">velg navn øverst</span>`;
+  let tidTxt = '';
+  if (h.fra_tid && h.til_tid) tidTxt = `kl. ${h.fra_tid.slice(0,5)}–${h.til_tid.slice(0,5)}`;
+  else if (h.fra_tid) tidTxt = `fra kl. ${h.fra_tid.slice(0,5)}`;
+  else if (h.til_tid) tidTxt = `til kl. ${h.til_tid.slice(0,5)}`;
+  return `<div class="dinner-tab">
+    <div class="dt-left">
+      <div class="dt-title">📌 ${h.tittel}</div>
+      <div class="dt-date">${tidTxt}</div>
+    </div>
+    <div class="dt-right">${tags || '<span class="empty-slot">Ingen påmeldt ennå</span>'}${btn}<button class="small-btn" onclick="deleteHendelse('${h.id}')" title="Slett hendelsen">🗑</button></div>
+  </div>`;
+}
+
+function kalenderDayRowHtml(dato, today, ds) {
+  const isToday = dato === today;
+  const isClosed = !!(ds && ds.stengt);
+
+  const exs = utstillinger.filter(u => dateInExhibRange(u, dato));
+  const exhibNotesHtml = exs.length
+    ? `<div class="exhib-notes">${exs.map(u => { const n = exhibitionNoteFor(u, dato); return `<div class="exhib-note ${n.special ? 'special' : ''}">${n.text}</div>`; }).join('')}</div>`
+    : '';
+
+  let closeControlHtml = '';
+  if (isClosed) {
+    closeControlHtml = `<div class="kal-closed">
+      <span class="tag unavail">Stengt${ds.notat ? ': ' + ds.notat : ''}</span>
+      <button class="small-btn" onclick="reopenDay('${dato}')">Åpne igjen</button>
+    </div>`;
+  } else if (closingDato === dato) {
+    closeControlHtml = `<div class="tid-edit">
+      <input type="text" id="close-notat-${dato}" placeholder="Årsak (valgfritt)">
+      <button class="small-btn" onclick="saveCloseDay('${dato}')">Steng</button>
+      <button class="small-btn" onclick="cancelCloseDay()">Avbryt</button>
+    </div>`;
+  }
+
+  let bodyHtml = '';
+  if (!isClosed) {
+    const hendelserForDay = hendelser.filter(h => h.dato === dato);
+    const hendelserHtml = hendelserForDay.map(hendelseTabHtml).join('');
+
+    const workingRows = vakter.filter(v => v.dato === dato && v.ansatt_id);
+    const unavailRows = utilgjengelig.filter(u => u.dato === dato);
+    const meVakt = workingRows.find(r => r.ansatt_id === mittNavnId);
+    const meUnavail = unavailRows.find(r => r.ansatt_id === mittNavnId);
+
+    const workingTagsHtml = workingRows.map(r => `<span class="tag work ${r.ansatt_id === mittNavnId ? 'mine' : ''} ${r.status === 'borte' ? 'borte' : ''}">${navnFor(r.ansatt_id)}${r.status === 'borte' ? ' (borte)' : ''}${r.ansatt_id === mittNavnId ? ` <button class="remove" onclick="unclaimKalenderDay('${dato}')">✕</button>` : ''}</span>`).join('');
+    const unavailTagsHtml = unavailRows.map(r => `<span class="tag unavail">${navnFor(r.ansatt_id)}${r.ansatt_id === mittNavnId ? ` <button class="remove" onclick="removeUnavailable('${r.id}')">✕</button>` : ''}</span>`).join('');
+
+    bodyHtml = `
+      ${hendelserHtml}
+      <div class="kal-people">
+        <div class="kal-people-row">
+          ${workingTagsHtml}
+          ${meVakt ? `<button class="small-btn" onclick="toggleBorte('${meVakt.id}','${meVakt.status}')">${meVakt.status === 'borte' ? 'merk som her' : 'merk som borte'}</button>` : ''}
+          ${!meVakt && mittNavnId ? `<button class="claim-btn" onclick="markWorking('${dato}')">+ jeg jobber</button>` : ''}
+        </div>
+        <div class="kal-people-row">
+          ${unavailTagsHtml}
+          ${!meUnavail && mittNavnId ? `<button class="del-day-btn" onclick="markUnavailable('${dato}')">jeg kan ikke</button>` : ''}
+        </div>
+        ${!mittNavnId ? '<span class="empty-slot">velg navn øverst for å melde deg på eller av</span>' : ''}
+      </div>`;
+  }
+
+  return `<div class="kal-day ${isToday ? 'today' : ''}">
+    <div class="kal-day-head">
+      <div class="weekday">${fmtDate(dato)}${isToday ? ' · i dag' : ''}</div>
+      ${!isClosed && closingDato !== dato ? `<button class="small-btn" onclick="startCloseDay('${dato}')">Steng dagen</button>` : ''}
+    </div>
+    ${closeControlHtml}
+    ${exhibNotesHtml}
+    ${bodyHtml}
+  </div>`;
+}
+
+function renderKalender() {
+  const el = document.getElementById('periods-list');
+  const today = todayIso();
+  const dates = buildDateRange(today, kalenderDays);
+  const dsMap = {};
+  dagstatus.forEach(d => { dsMap[d.dato] = d; });
+  let html = dates.map(dato => kalenderDayRowHtml(dato, today, dsMap[dato])).join('');
+  html += `<div style="text-align:center;margin-top:18px;"><button class="small-btn" onclick="extendKalender()">Vis flere dager</button></div>`;
+  el.innerHTML = html;
+}
+
+function extendKalender() {
+  kalenderDays += 14;
+  renderKalender();
+}
+window.extendKalender = extendKalender;
+
+function startCloseDay(dato) {
+  closingDato = dato;
+  renderKalender();
+}
+window.startCloseDay = startCloseDay;
+
+function cancelCloseDay() {
+  closingDato = null;
+  renderKalender();
+}
+window.cancelCloseDay = cancelCloseDay;
+
+async function saveCloseDay(dato) {
+  const notat = document.getElementById('close-notat-' + dato).value.trim() || null;
+  const { error } = await sb.from('fr_dagstatus').upsert({ sted_id: currentSted.id, dato, stengt: true, notat }, { onConflict: 'sted_id,dato' });
+  if (error) { alert('Kunne ikke stenge dagen: ' + error.message); return; }
+  closingDato = null;
+  await loadKalenderData();
+  renderKalender();
+}
+window.saveCloseDay = saveCloseDay;
+
+async function reopenDay(dato) {
+  const { error } = await sb.from('fr_dagstatus').delete().eq('sted_id', currentSted.id).eq('dato', dato);
+  if (error) { alert('Kunne ikke åpne dagen igjen: ' + error.message); return; }
+  await loadKalenderData();
+  renderKalender();
+}
+window.reopenDay = reopenDay;
+
+async function markWorking(dato) {
+  if (!mittNavnId) return;
+  await sb.from('fr_utilgjengelig').delete().eq('sted_id', currentSted.id).eq('dato', dato).eq('ansatt_id', mittNavnId);
+  const { error } = await sb.from('fr_vakter').insert({ dato, ansatt_id: mittNavnId, sted_id: currentSted.id, status: 'her' });
+  if (error) { alert('Kunne ikke melde deg på: ' + error.message); return; }
+  await loadShifts();
+  await loadKalenderData();
+  renderKalender();
+}
+window.markWorking = markWorking;
+
+async function unclaimKalenderDay(dato) {
+  const { error } = await sb.from('fr_vakter').delete().eq('sted_id', currentSted.id).eq('dato', dato).eq('ansatt_id', mittNavnId);
+  if (error) { alert('Kunne ikke melde deg av: ' + error.message); return; }
+  await loadShifts();
+  renderKalender();
+}
+window.unclaimKalenderDay = unclaimKalenderDay;
+
+async function toggleBorte(vaktId, current) {
+  const next = current === 'borte' ? 'her' : 'borte';
+  const { error } = await sb.from('fr_vakter').update({ status: next }).eq('id', vaktId);
+  if (error) { alert('Kunne ikke oppdatere status: ' + error.message); return; }
+  await loadShifts();
+  renderKalender();
+}
+window.toggleBorte = toggleBorte;
+
+async function markUnavailable(dato) {
+  if (!mittNavnId) return;
+  await sb.from('fr_vakter').delete().eq('sted_id', currentSted.id).eq('dato', dato).eq('ansatt_id', mittNavnId);
+  const { error } = await sb.from('fr_utilgjengelig').upsert({ sted_id: currentSted.id, dato, ansatt_id: mittNavnId }, { onConflict: 'sted_id,dato,ansatt_id' });
+  if (error) { alert('Kunne ikke lagre: ' + error.message); return; }
+  await loadShifts();
+  await loadKalenderData();
+  renderKalender();
+}
+window.markUnavailable = markUnavailable;
+
+async function removeUnavailable(id) {
+  const { error } = await sb.from('fr_utilgjengelig').delete().eq('id', id);
+  if (error) { alert('Kunne ikke fjerne: ' + error.message); return; }
+  await loadKalenderData();
+  renderKalender();
+}
+window.removeUnavailable = removeUnavailable;
+
+async function addExhibitionKalender() {
+  const navn = document.getElementById('new-ex-navn').value.trim();
+  const start = document.getElementById('new-ex-start').value;
+  const slutt = document.getElementById('new-ex-slutt').value;
+  if (!navn || !start || !slutt) { alert('Fyll ut navn, startdato og sluttdato'); return; }
+  if (start > slutt) { alert('Startdato må være før sluttdato'); return; }
+  const { error } = await sb.from('fr_utstillinger').insert({ navn, start_dato: start, slutt_dato: slutt, aktiv: false, sted_id: currentSted.id });
+  if (error) { alert('Kunne ikke legge til: ' + error.message); return; }
+  document.getElementById('new-ex-navn').value = '';
+  document.getElementById('new-ex-start').value = '';
+  document.getElementById('new-ex-slutt').value = '';
+  await loadExhibitions();
+  renderKalender();
+}
+window.addExhibitionKalender = addExhibitionKalender;
+
+async function addHendelse() {
+  const dato = document.getElementById('new-hendelse-dato').value;
+  const tittel = document.getElementById('new-hendelse-tittel').value.trim();
+  const fra = document.getElementById('new-hendelse-fra').value || null;
+  const til = document.getElementById('new-hendelse-til').value || null;
+  if (!dato || !tittel) { alert('Fyll ut dato og tittel'); return; }
+  const { error } = await sb.from('fr_hendelser').insert({ dato, tittel, fra_tid: fra, til_tid: til, sted_id: currentSted.id });
+  if (error) { alert('Kunne ikke legge til hendelse: ' + error.message); return; }
+  document.getElementById('new-hendelse-dato').value = '';
+  document.getElementById('new-hendelse-tittel').value = '';
+  document.getElementById('new-hendelse-fra').value = '';
+  document.getElementById('new-hendelse-til').value = '';
+  await loadKalenderData();
+  renderKalender();
+}
+window.addHendelse = addHendelse;
+
+async function deleteHendelse(id) {
+  const ok = confirm('Slette denne hendelsen og alle påmeldinger til den?');
+  if (!ok) return;
+  await sb.from('fr_hendelse_paameldinger').delete().eq('hendelse_id', id);
+  const { error } = await sb.from('fr_hendelser').delete().eq('id', id);
+  if (error) { alert('Kunne ikke slette: ' + error.message); return; }
+  await loadKalenderData();
+  renderKalender();
+}
+window.deleteHendelse = deleteHendelse;
+
+async function hendelseInn(hendelseId) {
+  if (!mittNavnId) return;
+  const { error } = await sb.from('fr_hendelse_paameldinger').insert({ hendelse_id: hendelseId, ansatt_id: mittNavnId });
+  if (error) { alert('Kunne ikke melde deg på: ' + error.message); return; }
+  await loadKalenderData();
+  renderKalender();
+}
+async function hendelseUt(id) {
+  const { error } = await sb.from('fr_hendelse_paameldinger').delete().eq('id', id);
+  if (error) { alert('Kunne ikke melde deg av: ' + error.message); return; }
+  await loadKalenderData();
+  renderKalender();
+}
+window.hendelseInn = hendelseInn;
+window.hendelseUt = hendelseUt;
 
 (async function init() {
   await loadSteder();

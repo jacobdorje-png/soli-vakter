@@ -819,11 +819,6 @@ function renderPeriods() {
   const relevant = utstillinger.filter(u => !u.slutt_dato || u.slutt_dato >= today)
     .sort((a, b) => (a.start_dato || '0000-00-00').localeCompare(b.start_dato || '0000-00-00'));
 
-  if (!relevant.length) {
-    el.innerHTML = '<div class="empty-slot">Ingen kommende utstillinger registrert.</div>';
-    return;
-  }
-
   const usedVaktIds = new Set();
   let html = '';
   let prevSluttDato = null;
@@ -907,6 +902,10 @@ function renderPeriods() {
       <div class="period-header"><span class="pname">Andre middager</span></div>
       ${orphanDinners.map(dinnerTabHtml).join('')}
     </div>`;
+  }
+
+  if (!html) {
+    html = '<div class="empty-slot">Ingen kommende utstillinger eller vakter registrert.</div>';
   }
 
   el.innerHTML = html;

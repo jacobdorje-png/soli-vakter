@@ -604,7 +604,7 @@ function setMittNavn(id) {
   mittNavnId = (id === mittNavnId) ? '' : id; // klikk igjen for å velge bort seg selv
   localStorage.setItem(mittNavnKey(), mittNavnId);
   renderWhoButtons();
-  renderPeriods();
+  renderStedList();
 }
 window.setMittNavn = setMittNavn;
 
@@ -633,7 +633,7 @@ async function addAnsatt() {
     localStorage.setItem(mittNavnKey(), mittNavnId);
   }
   renderWhoButtons();
-  renderPeriods();
+  renderStedList();
 }
 window.addAnsatt = addAnsatt;
 
@@ -648,7 +648,7 @@ async function removeAnsatt(id) {
     localStorage.removeItem(mittNavnKey());
   }
   await loadAnsatte();
-  renderPeriods();
+  renderStedList();
 }
 window.removeAnsatt = removeAnsatt;
 

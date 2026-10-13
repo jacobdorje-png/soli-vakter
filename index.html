@@ -438,6 +438,23 @@
     letter-spacing: 1px;
     margin: 0 0 8px;
   }
+  .kal-month-jump {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 0 0 20px;
+  }
+  .kal-month-jump label { font-size: 13px; color: #6d6b63; }
+  .kal-month-jump select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #d8d6cd;
+    background: #fff;
+    font-size: 13px;
+    color: #2b2a28;
+    font-family: inherit;
+  }
   .kal-week-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -579,6 +596,7 @@ function selectSted(slug) {
   closingDato = null;
   editingKalTidId = null;
   kalenderDays = 21;
+  kalViewStart = null;
 
   document.getElementById('admin-toggle-btn').textContent = sted.visning === 'kalender'
     ? (sted.slug === 'smia' ? 'Legg til hendelse' : 'Legg til utstilling / hendelse')
@@ -1142,6 +1160,7 @@ let hendelser = [];
 let hendelsePaameldinger = [];
 let utilgjengelig = [];
 let kalenderDays = 21;
+let kalViewStart = null; // null = start på dagens dato, ellers satt av månedshopp
 let closingDato = null;
 let editingKalTidId = null; // vakt-id som redigeres (eget tidspunkt for "jeg jobber" i kalender-modus)
 
@@ -1368,7 +1387,7 @@ function kalenderDayRowHtml(dato, today, ds, compact) {
         <div class="kal-people-row">
           ${workingTagsHtml}
           ${meVakt ? `<button class="small-btn" onclick="toggleBorte('${meVakt.id}','${meVakt.status}')">${meVakt.status === 'borte' ? 'merk som her' : 'merk som borte'}</button>` : ''}
-          ${!meVakt && mittNavnId ? `<button class="claim-btn" onclick="markWorking('${dato}')">+ jeg jobber</button>` : ''}
+          ${!meVakt && mittNavnId ? `<button class="claim-btn" onclick="markWorking('${dato}','her')">+ jeg jobber</button> <button class="small-btn" onclick="markWorking('${dato}','borte')" title="Jobber denne dagen, men er ikke fysisk på stedet">+ jeg jobber (borte)</button>` : ''}
         </div>
         ${kalTidEditHtml}
         <div class="kal-people-row">
@@ -1391,8 +1410,8 @@ function kalenderDayRowHtml(dato, today, ds, compact) {
 }
 
 // Grupperer en liste med påfølgende datoer i uker (mandag–søndag). Den første
-// og siste uken kan bli ufullstendige siden visningen starter på "i dag" og
-// kuttes av kalenderDays.
+// og siste uken kan bli ufullstendige siden visningen starter på "i dag" (eller
+// et månedshopp) og kuttes av kalenderDays.
 function groupIntoWeeks(dates) {
   const weeks = [];
   let current = null;
@@ -1407,15 +1426,61 @@ function groupIntoWeeks(dates) {
   return weeks;
 }
 
+// Bygger <option>-listen for månedshopp: denne måneden og de 11 neste.
+function monthJumpOptionsHtml(selectedYm) {
+  const today = todayIso();
+  const base = new Date(today + 'T00:00:00');
+  let opts = '';
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(base.getFullYear(), base.getMonth() + i, 1);
+    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    opts += `<option value="${ym}" ${ym === selectedYm ? 'selected' : ''}>${label}</option>`;
+  }
+  return opts;
+}
+
+function monthJumpHtml(viewStart) {
+  const selectedYm = viewStart.slice(0, 7);
+  return `<div class="kal-month-jump">
+    <label for="kal-month-select">Hopp til måned:</label>
+    <select id="kal-month-select" onchange="jumpToMonth(this.value)">${monthJumpOptionsHtml(selectedYm)}</select>
+    ${kalViewStart ? `<button class="small-btn" onclick="jumpToToday()">Tilbake til i dag</button>` : ''}
+  </div>`;
+}
+
+// Hopper visningen til starten av valgt måned (eller til i dag, hvis valgt måned allerede er i gang)
+function jumpToMonth(ym) {
+  const today = todayIso();
+  const [y, m] = ym.split('-').map(Number);
+  const firstOfMonth = `${ym}-01`;
+  const start = firstOfMonth > today ? firstOfMonth : today;
+  const endOfMonth = toIsoLocal(new Date(y, m, 0));
+  const dagerIMaaneden = Math.round((new Date(endOfMonth + 'T00:00:00') - new Date(start + 'T00:00:00')) / 86400000) + 1;
+  kalViewStart = start === today ? null : start;
+  kalenderDays = Math.max(dagerIMaaneden, 7);
+  renderKalender();
+}
+window.jumpToMonth = jumpToMonth;
+
+function jumpToToday() {
+  kalViewStart = null;
+  kalenderDays = 21;
+  renderKalender();
+}
+window.jumpToToday = jumpToToday;
+
 function renderKalender() {
   const el = document.getElementById('periods-list');
   const today = todayIso();
-  const dates = buildDateRange(today, kalenderDays);
+  const viewStart = (kalViewStart && kalViewStart > today) ? kalViewStart : today;
+  const dates = buildDateRange(viewStart, kalenderDays);
   const dsMap = {};
   dagstatus.forEach(d => { dsMap[d.dato] = d; });
 
   const weeks = groupIntoWeeks(dates);
-  let html = weeks.map(week => {
+  let html = monthJumpHtml(viewStart);
+  html += weeks.map(week => {
     const weekNum = isoWeekNumber(week[0]);
     const sunday = week.find(d => new Date(d + 'T00:00:00').getDay() === 0);
     const rest = week.filter(d => d !== sunday);
@@ -1468,10 +1533,10 @@ async function reopenDay(dato) {
 }
 window.reopenDay = reopenDay;
 
-async function markWorking(dato) {
+async function markWorking(dato, status) {
   if (!mittNavnId) return;
   await sb.from('fr_utilgjengelig').delete().eq('sted_id', currentSted.id).eq('dato', dato).eq('ansatt_id', mittNavnId);
-  const { error } = await sb.from('fr_vakter').insert({ dato, ansatt_id: mittNavnId, sted_id: currentSted.id, status: 'her' });
+  const { error } = await sb.from('fr_vakter').insert({ dato, ansatt_id: mittNavnId, sted_id: currentSted.id, status: status || 'her' });
   if (error) { alert('Kunne ikke melde deg på: ' + error.message); return; }
   await loadShifts();
   await loadKalenderData();

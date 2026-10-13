@@ -458,6 +458,16 @@
   .kal-day-compact .dinner-tab { padding: 8px 10px; }
   .kal-day-compact .dinner-tab .dt-title { font-size: 12px; }
   .kal-day-compact .dinner-tab .dt-date { font-size: 10px; }
+  .kal-tid-tag {
+    font-size: 11px;
+    color: #6d6b63;
+    cursor: pointer;
+  }
+  .kal-tid-tag:hover { text-decoration: underline; }
+  .kal-tid-tag.custom { color: var(--accent); }
+  .kal-tid-plain { font-size: 11px; color: #6d6b63; }
+  .tag.mine .kal-tid-tag, .tag.mine .kal-tid-plain { color: #4a4842; }
+  .kal-day-compact .kal-tid-tag, .kal-day-compact .kal-tid-plain { font-size: 10px; }
 </style>
 </head>
 <body>
@@ -567,6 +577,7 @@ function selectSted(slug) {
   editingTidDato = null;
   addingPerson = false;
   closingDato = null;
+  editingKalTidId = null;
   kalenderDays = 21;
 
   document.getElementById('admin-toggle-btn').textContent = sted.visning === 'kalender'
@@ -1132,6 +1143,7 @@ let hendelsePaameldinger = [];
 let utilgjengelig = [];
 let kalenderDays = 21;
 let closingDato = null;
+let editingKalTidId = null; // vakt-id som redigeres (eget tidspunkt for "jeg jobber" i kalender-modus)
 
 function renderLegend() {
   const el = document.getElementById('legend');
@@ -1281,6 +1293,13 @@ function hendelseTabHtml(h) {
   </div>`;
 }
 
+// Viser eget tidspunkt hvis satt for denne vakten, ellers stedets standard åpningstid
+function kalVaktTidText(r) {
+  const fra = (r.fra_tid || currentSted.std_fra_tid).slice(0, 5);
+  const til = (r.til_tid || currentSted.std_til_tid).slice(0, 5);
+  return `${fra}–${til}`;
+}
+
 function kalenderDayRowHtml(dato, today, ds, compact) {
   const isToday = dato === today;
   const isClosed = !!(ds && ds.stengt);
@@ -1314,8 +1333,26 @@ function kalenderDayRowHtml(dato, today, ds, compact) {
     const meVakt = workingRows.find(r => r.ansatt_id === mittNavnId);
     const meUnavail = unavailRows.find(r => r.ansatt_id === mittNavnId);
 
-    const workingTagsHtml = workingRows.map(r => `<span class="tag work ${r.ansatt_id === mittNavnId ? 'mine' : ''} ${r.status === 'borte' ? 'borte' : ''}">${navnFor(r.ansatt_id)}${r.status === 'borte' ? ' (borte)' : ''}${r.ansatt_id === mittNavnId ? ` <button class="remove" onclick="unclaimKalenderDay('${dato}')">✕</button>` : ''}</span>`).join('');
+    const workingTagsHtml = workingRows.map(r => {
+      const mine = r.ansatt_id === mittNavnId;
+      const isCustom = !!(r.fra_tid || r.til_tid);
+      const tidTxt = kalVaktTidText(r);
+      const tidHtml = mine
+        ? `<span class="kal-tid-tag ${isCustom ? 'custom' : ''}" onclick="startEditKalTid('${r.id}')" title="Klikk for å sette eget tidspunkt">kl. ${tidTxt}${isCustom ? ' ✎' : ''}</span>`
+        : `<span class="kal-tid-plain">kl. ${tidTxt}</span>`;
+      return `<span class="tag work ${mine ? 'mine' : ''} ${r.status === 'borte' ? 'borte' : ''}">${navnFor(r.ansatt_id)}${r.status === 'borte' ? ' (borte)' : ''} ${tidHtml}${mine ? ` <button class="remove" onclick="unclaimKalenderDay('${dato}')">✕</button>` : ''}</span>`;
+    }).join('');
     const unavailTagsHtml = unavailRows.map(r => `<span class="tag unavail">${navnFor(r.ansatt_id)}${r.ansatt_id === mittNavnId ? ` <button class="remove" onclick="removeUnavailable('${r.id}')">✕</button>` : ''}</span>`).join('');
+
+    const editingRow = workingRows.find(r => r.id === editingKalTidId);
+    const kalTidEditHtml = editingRow ? `<div class="tid-edit">
+      <input type="time" id="kal-tid-fra-${editingRow.id}" value="${editingRow.fra_tid ? editingRow.fra_tid.slice(0, 5) : ''}">
+      <span>–</span>
+      <input type="time" id="kal-tid-til-${editingRow.id}" value="${editingRow.til_tid ? editingRow.til_tid.slice(0, 5) : ''}">
+      <button class="small-btn" onclick="saveKalTid('${editingRow.id}')">Lagre</button>
+      ${(editingRow.fra_tid || editingRow.til_tid) ? `<button class="small-btn" onclick="resetKalTid('${editingRow.id}')">Nullstill</button>` : ''}
+      <button class="small-btn" onclick="cancelEditKalTid()">Avbryt</button>
+    </div>` : '';
 
     bodyHtml = `
       ${hendelserHtml}
@@ -1325,6 +1362,7 @@ function kalenderDayRowHtml(dato, today, ds, compact) {
           ${meVakt ? `<button class="small-btn" onclick="toggleBorte('${meVakt.id}','${meVakt.status}')">${meVakt.status === 'borte' ? 'merk som her' : 'merk som borte'}</button>` : ''}
           ${!meVakt && mittNavnId ? `<button class="claim-btn" onclick="markWorking('${dato}')">+ jeg jobber</button>` : ''}
         </div>
+        ${kalTidEditHtml}
         <div class="kal-people-row">
           ${unavailTagsHtml}
           ${!meUnavail && mittNavnId ? `<button class="del-day-btn" onclick="markUnavailable('${dato}')">jeg kan ikke</button>` : ''}
@@ -1440,6 +1478,38 @@ async function unclaimKalenderDay(dato) {
   renderKalender();
 }
 window.unclaimKalenderDay = unclaimKalenderDay;
+
+function startEditKalTid(vaktId) {
+  editingKalTidId = vaktId;
+  renderKalender();
+}
+window.startEditKalTid = startEditKalTid;
+
+function cancelEditKalTid() {
+  editingKalTidId = null;
+  renderKalender();
+}
+window.cancelEditKalTid = cancelEditKalTid;
+
+async function saveKalTid(vaktId) {
+  const fra = document.getElementById('kal-tid-fra-' + vaktId).value || null;
+  const til = document.getElementById('kal-tid-til-' + vaktId).value || null;
+  const { error } = await sb.from('fr_vakter').update({ fra_tid: fra, til_tid: til }).eq('id', vaktId);
+  if (error) { alert('Kunne ikke lagre tidspunkt: ' + error.message); return; }
+  editingKalTidId = null;
+  await loadShifts();
+  renderKalender();
+}
+window.saveKalTid = saveKalTid;
+
+async function resetKalTid(vaktId) {
+  const { error } = await sb.from('fr_vakter').update({ fra_tid: null, til_tid: null }).eq('id', vaktId);
+  if (error) { alert('Kunne ikke nullstille tidspunkt: ' + error.message); return; }
+  editingKalTidId = null;
+  await loadShifts();
+  renderKalender();
+}
+window.resetKalTid = resetKalTid;
 
 async function toggleBorte(vaktId, current) {
   const next = current === 'borte' ? 'her' : 'borte';

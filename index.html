@@ -1293,10 +1293,17 @@ function hendelseTabHtml(h) {
   </div>`;
 }
 
-// Viser eget tidspunkt hvis satt for denne vakten, ellers stedets standard åpningstid
+// Effektivt tidspunkt for en vakt: eget tidspunkt for vakten > personens egen standardtid > stedets standard åpningstid
+function kalEffTid(r) {
+  const a = ansatte.find(x => x.id === r.ansatt_id);
+  const fra = r.fra_tid || (a && a.std_fra_tid) || currentSted.std_fra_tid;
+  const til = r.til_tid || (a && a.std_til_tid) || currentSted.std_til_tid;
+  return { fra: fra.slice(0, 5), til: til.slice(0, 5) };
+}
+
+// Viser eget tidspunkt hvis satt for denne vakten, ellers personens egen standardtid, ellers stedets standard åpningstid
 function kalVaktTidText(r) {
-  const fra = (r.fra_tid || currentSted.std_fra_tid).slice(0, 5);
-  const til = (r.til_tid || currentSted.std_til_tid).slice(0, 5);
+  const { fra, til } = kalEffTid(r);
   return `${fra}–${til}`;
 }
 
@@ -1345,10 +1352,11 @@ function kalenderDayRowHtml(dato, today, ds, compact) {
     const unavailTagsHtml = unavailRows.map(r => `<span class="tag unavail">${navnFor(r.ansatt_id)}${r.ansatt_id === mittNavnId ? ` <button class="remove" onclick="removeUnavailable('${r.id}')">✕</button>` : ''}</span>`).join('');
 
     const editingRow = workingRows.find(r => r.id === editingKalTidId);
+    const editingEffTid = editingRow ? kalEffTid(editingRow) : null;
     const kalTidEditHtml = editingRow ? `<div class="tid-edit">
-      <input type="time" id="kal-tid-fra-${editingRow.id}" value="${editingRow.fra_tid ? editingRow.fra_tid.slice(0, 5) : ''}">
+      <input type="time" id="kal-tid-fra-${editingRow.id}" value="${editingEffTid.fra}">
       <span>–</span>
-      <input type="time" id="kal-tid-til-${editingRow.id}" value="${editingRow.til_tid ? editingRow.til_tid.slice(0, 5) : ''}">
+      <input type="time" id="kal-tid-til-${editingRow.id}" value="${editingEffTid.til}">
       <button class="small-btn" onclick="saveKalTid('${editingRow.id}')">Lagre</button>
       ${(editingRow.fra_tid || editingRow.til_tid) ? `<button class="small-btn" onclick="resetKalTid('${editingRow.id}')">Nullstill</button>` : ''}
       <button class="small-btn" onclick="cancelEditKalTid()">Avbryt</button>

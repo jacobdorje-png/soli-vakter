@@ -413,6 +413,7 @@
   .admin-edit-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .tag.work { background: var(--c-green-bg); color: var(--c-green); }
   .tag.work.borte { background: var(--c-plum-bg); color: var(--c-plum); }
+  .tag.work.henterunde { background: var(--c-orange-bg); color: var(--c-orange); }
   .tag.unavail { background: var(--c-red-bg); color: var(--c-red); }
   .exhib-notes { margin: 6px 0 8px; }
   .exhib-note { font-size: 12px; color: #a8a498; margin: 2px 0; }
@@ -602,7 +603,7 @@ function selectSted(slug) {
     ? (sted.slug === 'smia' ? 'Legg til hendelse' : 'Legg til utstilling / hendelse')
     : 'Legg til ny utstilling / middag';
   document.getElementById('admin-hint').textContent = sted.visning === 'kalender'
-    ? 'Tips: klikk «Steng dagen» på en dato for å markere den som stengt (med valgfri årsak), og «Åpne igjen» for å åpne den. Grønt navn betyr at man jobber, rødt betyr at man ikke kan denne dagen – man kan også merke seg som «borte» hvis man jobber men ikke er fysisk på stedet.' + (sted.slug === 'smia' ? ' Utstillinger administreres på Soli-fanen og vises automatisk her også.' : '')
+    ? 'Tips: klikk «Steng dagen» på en dato for å markere den som stengt (med valgfri årsak), og «Åpne igjen» for å åpne den. Grønt navn betyr at man jobber, rødt betyr at man ikke kan denne dagen – man kan også merke seg som «borte» eller «på hente- og leveringsrunde» hvis man jobber men ikke er fysisk på stedet.' + (sted.slug === 'smia' ? ' Utstillinger administreres på Soli-fanen og vises automatisk her også.' : '')
     : 'Tips: du kan klikke direkte på navnet til en utstilling over for å endre navn, datoer eller sette den som aktiv. Klikk på klokkeslettet under en dag for å sette et eget tidspunkt for den dagen.';
   renderLegend();
 
@@ -1172,6 +1173,7 @@ function renderLegend() {
       <span><i class="dot dot-green"></i> jobber</span>
       <span><i class="dot dot-red"></i> kan ikke denne dagen</span>
       <span><i class="dot dot-plum"></i> jobber, men borte fra stedet</span>
+      <span><i class="dot dot-orange"></i> på hente- og leveringsrunde</span>
       <span><i class="dot dot-grey"></i> stengt</span>`;
   } else {
     el.innerHTML = `
@@ -1326,6 +1328,28 @@ function kalVaktTidText(r) {
   return `${fra}–${til}`;
 }
 
+// Statusene en vakt kan ha i kalender-modus, og hvordan de vises
+const VAKT_STATUSER = {
+  her: { label: 'her', suffix: '', cssClass: '' },
+  borte: { label: 'borte', suffix: ' (borte)', cssClass: 'borte' },
+  henterunde: { label: 'henterunde', suffix: ' (henterunde)', cssClass: 'henterunde' },
+};
+
+function vaktStatusSuffix(status) {
+  return (VAKT_STATUSER[status] || VAKT_STATUSER.her).suffix;
+}
+function vaktStatusClass(status) {
+  return (VAKT_STATUSER[status] || VAKT_STATUSER.her).cssClass;
+}
+
+// Knapper for å bytte til en av de andre statusene enn den man har nå
+function otherVaktStatusButtonsHtml(vaktId, currentStatus) {
+  return Object.keys(VAKT_STATUSER)
+    .filter(s => s !== currentStatus)
+    .map(s => `<button class="small-btn" onclick="setVaktStatus('${vaktId}','${s}')">merk som ${VAKT_STATUSER[s].label}</button>`)
+    .join(' ');
+}
+
 function kalenderDayRowHtml(dato, today, ds, compact) {
   const isToday = dato === today;
   const isClosed = !!(ds && ds.stengt);
@@ -1366,7 +1390,7 @@ function kalenderDayRowHtml(dato, today, ds, compact) {
       const tidHtml = mine
         ? `<span class="kal-tid-tag ${isCustom ? 'custom' : ''}" onclick="startEditKalTid('${r.id}')" title="Klikk for å sette eget tidspunkt">kl. ${tidTxt}${isCustom ? ' ✎' : ''}</span>`
         : `<span class="kal-tid-plain">kl. ${tidTxt}</span>`;
-      return `<span class="tag work ${mine ? 'mine' : ''} ${r.status === 'borte' ? 'borte' : ''}">${navnFor(r.ansatt_id)}${r.status === 'borte' ? ' (borte)' : ''} ${tidHtml}${mine ? ` <button class="remove" onclick="unclaimKalenderDay('${dato}')">✕</button>` : ''}</span>`;
+      return `<span class="tag work ${mine ? 'mine' : ''} ${vaktStatusClass(r.status)}">${navnFor(r.ansatt_id)}${vaktStatusSuffix(r.status)} ${tidHtml}${mine ? ` <button class="remove" onclick="unclaimKalenderDay('${dato}')">✕</button>` : ''}</span>`;
     }).join('');
     const unavailTagsHtml = unavailRows.map(r => `<span class="tag unavail">${navnFor(r.ansatt_id)}${r.ansatt_id === mittNavnId ? ` <button class="remove" onclick="removeUnavailable('${r.id}')">✕</button>` : ''}</span>`).join('');
 
@@ -1386,8 +1410,8 @@ function kalenderDayRowHtml(dato, today, ds, compact) {
       <div class="kal-people">
         <div class="kal-people-row">
           ${workingTagsHtml}
-          ${meVakt ? `<button class="small-btn" onclick="toggleBorte('${meVakt.id}','${meVakt.status}')">${meVakt.status === 'borte' ? 'merk som her' : 'merk som borte'}</button>` : ''}
-          ${!meVakt && mittNavnId ? `<button class="claim-btn" onclick="markWorking('${dato}','her')">+ jeg jobber</button> <button class="small-btn" onclick="markWorking('${dato}','borte')" title="Jobber denne dagen, men er ikke fysisk på stedet">+ jeg jobber (borte)</button>` : ''}
+          ${meVakt ? otherVaktStatusButtonsHtml(meVakt.id, meVakt.status) : ''}
+          ${!meVakt && mittNavnId ? `<button class="claim-btn" onclick="markWorking('${dato}','her')">+ jeg jobber</button> <button class="small-btn" onclick="markWorking('${dato}','borte')" title="Jobber denne dagen, men er ikke fysisk på stedet">+ jeg jobber (borte)</button> <button class="small-btn" onclick="markWorking('${dato}','henterunde')" title="Jobber denne dagen, men er ute på hente- og leveringsrunde">+ jeg jobber (henterunde)</button>` : ''}
         </div>
         ${kalTidEditHtml}
         <div class="kal-people-row">
@@ -1584,14 +1608,13 @@ async function resetKalTid(vaktId) {
 }
 window.resetKalTid = resetKalTid;
 
-async function toggleBorte(vaktId, current) {
-  const next = current === 'borte' ? 'her' : 'borte';
-  const { error } = await sb.from('fr_vakter').update({ status: next }).eq('id', vaktId);
+async function setVaktStatus(vaktId, status) {
+  const { error } = await sb.from('fr_vakter').update({ status }).eq('id', vaktId);
   if (error) { alert('Kunne ikke oppdatere status: ' + error.message); return; }
   await loadShifts();
   renderKalender();
 }
-window.toggleBorte = toggleBorte;
+window.setVaktStatus = setVaktStatus;
 
 async function markUnavailable(dato) {
   if (!mittNavnId) return;

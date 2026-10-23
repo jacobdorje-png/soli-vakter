@@ -603,7 +603,7 @@ function selectSted(slug) {
     ? (sted.slug === 'smia' ? 'Legg til hendelse' : 'Legg til utstilling / hendelse')
     : 'Legg til ny utstilling / middag';
   document.getElementById('admin-hint').textContent = sted.visning === 'kalender'
-    ? 'Tips: klikk «Steng dagen» på en dato for å markere den som stengt (med valgfri årsak), og «Åpne igjen» for å åpne den. Grønt navn betyr at man jobber, rødt betyr at man ikke kan denne dagen – man kan også merke seg som «borte» eller «på hente- og leveringsrunde» hvis man jobber men ikke er fysisk på stedet.' + (sted.slug === 'smia' ? ' Utstillinger administreres på Soli-fanen og vises automatisk her også.' : '')
+    ? 'Tips: klikk «Steng dagen» på en dato for å markere den som stengt (med valgfri årsak), og «Åpne igjen» for å åpne den. Grønt navn betyr at man jobber, rødt betyr at man ikke kan denne dagen – man kan også merke seg som «borte»' + (sted.slug !== 'smia' ? ' eller «på hente- og leveringsrunde»' : '') + ' hvis man jobber men ikke er fysisk på stedet.' + (sted.slug === 'smia' ? ' Utstillinger administreres på Soli-fanen og vises automatisk her også.' : '')
     : 'Tips: du kan klikke direkte på navnet til en utstilling over for å endre navn, datoer eller sette den som aktiv. Klikk på klokkeslettet under en dag for å sette et eget tidspunkt for den dagen.';
   renderLegend();
 
@@ -1173,7 +1173,7 @@ function renderLegend() {
       <span><i class="dot dot-green"></i> jobber</span>
       <span><i class="dot dot-red"></i> kan ikke denne dagen</span>
       <span><i class="dot dot-plum"></i> jobber, men borte fra stedet</span>
-      <span><i class="dot dot-orange"></i> på hente- og leveringsrunde</span>
+      ${currentSted.slug !== 'smia' ? `<span><i class="dot dot-orange"></i> på hente- og leveringsrunde</span>` : ''}
       <span><i class="dot dot-grey"></i> stengt</span>`;
   } else {
     el.innerHTML = `
@@ -1342,9 +1342,14 @@ function vaktStatusClass(status) {
   return (VAKT_STATUSER[status] || VAKT_STATUSER.her).cssClass;
 }
 
+// Henterunde er bare tilgjengelig på Soli, ikke Smia
+function tilgjengeligeVaktStatuser() {
+  return Object.keys(VAKT_STATUSER).filter(s => s !== 'henterunde' || currentSted.slug !== 'smia');
+}
+
 // Knapper for å bytte til en av de andre statusene enn den man har nå
 function otherVaktStatusButtonsHtml(vaktId, currentStatus) {
-  return Object.keys(VAKT_STATUSER)
+  return tilgjengeligeVaktStatuser()
     .filter(s => s !== currentStatus)
     .map(s => `<button class="small-btn" onclick="setVaktStatus('${vaktId}','${s}')">merk som ${VAKT_STATUSER[s].label}</button>`)
     .join(' ');
@@ -1411,7 +1416,7 @@ function kalenderDayRowHtml(dato, today, ds, compact) {
         <div class="kal-people-row">
           ${workingTagsHtml}
           ${meVakt ? otherVaktStatusButtonsHtml(meVakt.id, meVakt.status) : ''}
-          ${!meVakt && mittNavnId ? `<button class="claim-btn" onclick="markWorking('${dato}','her')">+ jeg jobber</button> <button class="small-btn" onclick="markWorking('${dato}','borte')" title="Jobber denne dagen, men er ikke fysisk på stedet">+ jeg jobber (borte)</button> <button class="small-btn" onclick="markWorking('${dato}','henterunde')" title="Jobber denne dagen, men er ute på hente- og leveringsrunde">+ jeg jobber (henterunde)</button>` : ''}
+          ${!meVakt && mittNavnId ? `<button class="claim-btn" onclick="markWorking('${dato}','her')">+ jeg jobber</button> <button class="small-btn" onclick="markWorking('${dato}','borte')" title="Jobber denne dagen, men er ikke fysisk på stedet">+ jeg jobber (borte)</button>${currentSted.slug !== 'smia' ? ` <button class="small-btn" onclick="markWorking('${dato}','henterunde')" title="Jobber denne dagen, men er ute på hente- og leveringsrunde">+ jeg jobber (henterunde)</button>` : ''}` : ''}
         </div>
         ${kalTidEditHtml}
         <div class="kal-people-row">

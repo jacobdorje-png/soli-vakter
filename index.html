@@ -976,15 +976,16 @@ function renderPeriods() {
         <span class="edit-hint">✎ endre</span>
       </div>`;
 
-    const periodHtml = `${gapLabelHtml}<div class="period-block">
-      ${headerHtml}
-      ${dinner ? dinnerTabHtml(dinner) : ''}
-      <div class="day-rows">${dayRowsHtml}</div>
-    </div>`;
-
     // Sorteringsnøkkel: første kommende vaktdato i perioden, ellers start/slutt-dato
     const sortDate = (periodVakter[0] && periodVakter[0].dato) || u.start_dato || u.slutt_dato || '9999-99-99';
-    blocks.push({ sortDate, html: periodHtml, isPeriod: true });
+    blocks.push({
+      sortDate,
+      isPeriod: true,
+      gapLabelHtml,
+      headerHtml,
+      dinnerHtml: dinner ? dinnerTabHtml(dinner) : '',
+      dayRowsHtml,
+    });
   });
 
   // vakter som ikke hører til noen synlig utstillingsperiode (sikkerhetsnett) -
@@ -998,8 +999,28 @@ function renderPeriods() {
 
   blocks.sort((a, b) => a.sortDate.localeCompare(b.sortDate));
 
+  // Løse vakter som kommer rett etter en utstillingsperiode (kronologisk, uten en
+  // annen periode i mellom) vises nå inni samme boks som perioden, under en liten
+  // "andre vakter"-overskrift, i stedet for i en egen boks. Løse vakter som ikke har
+  // noen periode foran seg (f.eks. før den aller første utstillingen) får fortsatt
+  // sin egen "Andre vakter"-boks.
   let html = '';
+  let openPeriod = null;
   let orphanBuffer = [];
+
+  const closeOpenPeriod = () => {
+    if (openPeriod) {
+      const extraHtml = openPeriod.extraRows.length
+        ? `<div class="period-label">— andre vakter —</div>${openPeriod.extraRows.join('')}`
+        : '';
+      html += `${openPeriod.gapLabelHtml}<div class="period-block">
+        ${openPeriod.headerHtml}
+        ${openPeriod.dinnerHtml}
+        <div class="day-rows">${openPeriod.dayRowsHtml}${extraHtml}</div>
+      </div>`;
+      openPeriod = null;
+    }
+  };
   const flushOrphanBuffer = () => {
     if (orphanBuffer.length) {
       html += `<div class="period-block">
@@ -1012,11 +1033,15 @@ function renderPeriods() {
   blocks.forEach(b => {
     if (b.isPeriod) {
       flushOrphanBuffer();
-      html += b.html;
+      closeOpenPeriod();
+      openPeriod = { gapLabelHtml: b.gapLabelHtml, headerHtml: b.headerHtml, dinnerHtml: b.dinnerHtml, dayRowsHtml: b.dayRowsHtml, extraRows: [] };
+    } else if (openPeriod) {
+      openPeriod.extraRows.push(b.html);
     } else {
       orphanBuffer.push(b.html);
     }
   });
+  closeOpenPeriod();
   flushOrphanBuffer();
 
   // middager uten tilknyttet utstilling (sikkerhetsnett)

@@ -917,7 +917,9 @@ function renderPeriods() {
     .sort((a, b) => (a.start_dato || '0000-00-00').localeCompare(b.start_dato || '0000-00-00'));
 
   const usedVaktIds = new Set();
-  let html = '';
+  // Vi bygger opp blokker (en per utstillingsperiode, en per dato med "løse" vakter)
+  // og sorterer dem kronologisk til slutt, i stedet for å alltid legge løse vakter sist.
+  const blocks = [];
   let prevSluttDato = null;
 
   relevant.forEach(u => {
@@ -932,10 +934,11 @@ function renderPeriods() {
     periodVakter.forEach(v => usedVaktIds.add(v.id));
 
     // gap-label mellom forrige periode og denne
+    let gapLabelHtml = '';
     if (prevSluttDato && periodVakter.length) {
       const gapDays = (new Date(periodVakter[0].dato) - new Date(prevSluttDato)) / 86400000;
       if (gapDays > 4) {
-        html += `<div class="period-label">— stengt til ${fmtDate(periodVakter[0].dato)} —</div>`;
+        gapLabelHtml = `<div class="period-label">— stengt til ${fmtDate(periodVakter[0].dato)} —</div>`;
       }
     }
     if (u.slutt_dato) prevSluttDato = u.slutt_dato;
@@ -973,24 +976,48 @@ function renderPeriods() {
         <span class="edit-hint">✎ endre</span>
       </div>`;
 
-    html += `<div class="period-block">
+    const periodHtml = `${gapLabelHtml}<div class="period-block">
       ${headerHtml}
       ${dinner ? dinnerTabHtml(dinner) : ''}
       <div class="day-rows">${dayRowsHtml}</div>
     </div>`;
+
+    // Sorteringsnøkkel: første kommende vaktdato i perioden, ellers start/slutt-dato
+    const sortDate = (periodVakter[0] && periodVakter[0].dato) || u.start_dato || u.slutt_dato || '9999-99-99';
+    blocks.push({ sortDate, html: periodHtml, isPeriod: true });
   });
 
-  // vakter som ikke hører til noen synlig utstillingsperiode (sikkerhetsnett)
+  // vakter som ikke hører til noen synlig utstillingsperiode (sikkerhetsnett) -
+  // disse plasseres nå kronologisk riktig i stedet for alltid sist
   const orphanVakter = vakter.filter(v => v.dato >= today && !usedVaktIds.has(v.id)).sort((a,b) => a.dato.localeCompare(b.dato));
-  if (orphanVakter.length) {
-    const byDate = {};
-    orphanVakter.forEach(v => { (byDate[v.dato] = byDate[v.dato] || []).push(v); });
-    const rowsHtml = Object.keys(byDate).sort().map(d => dayRowHtml(d, byDate[d], today)).join('');
-    html += `<div class="period-block">
-      <div class="period-header"><span class="pname">Andre vakter</span></div>
-      <div class="day-rows">${rowsHtml}</div>
-    </div>`;
-  }
+  const orphanByDate = {};
+  orphanVakter.forEach(v => { (orphanByDate[v.dato] = orphanByDate[v.dato] || []).push(v); });
+  Object.keys(orphanByDate).sort().forEach(d => {
+    blocks.push({ sortDate: d, html: dayRowHtml(d, orphanByDate[d], today), isPeriod: false });
+  });
+
+  blocks.sort((a, b) => a.sortDate.localeCompare(b.sortDate));
+
+  let html = '';
+  let orphanBuffer = [];
+  const flushOrphanBuffer = () => {
+    if (orphanBuffer.length) {
+      html += `<div class="period-block">
+        <div class="period-header"><span class="pname">Andre vakter</span></div>
+        <div class="day-rows">${orphanBuffer.join('')}</div>
+      </div>`;
+      orphanBuffer = [];
+    }
+  };
+  blocks.forEach(b => {
+    if (b.isPeriod) {
+      flushOrphanBuffer();
+      html += b.html;
+    } else {
+      orphanBuffer.push(b.html);
+    }
+  });
+  flushOrphanBuffer();
 
   // middager uten tilknyttet utstilling (sikkerhetsnett)
   const orphanDinners = middager.filter(m => m.dato >= today && !m.utstilling_id);

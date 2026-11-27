@@ -8,7 +8,7 @@
   @font-face {
     font-family: 'Proxima Nova';
     src: local('Proxima Nova Light') local('ProximaNova-Light');
-    font-weight: 300;
+    font-weight: 400;
   }
   :root {
     --c-red: #b6503f;
@@ -38,20 +38,20 @@
     background: #eeede9;
     color: #2b2a28;
     font-family: 'Proxima Nova', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    font-weight: 300;
+    font-weight: 400;
     -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 720px; margin: 0 auto; padding: 28px 20px 80px; }
   header.top { margin-bottom: 28px; }
   header.top h1 {
-    font-weight: 300;
+    font-weight: 400;
     font-size: 26px;
     letter-spacing: 0.2px;
     margin: 0 0 4px;
   }
   header.top p.sub {
     margin: 0;
-    color: #8a8880;
+    color: #605f59;
     font-size: 14px;
   }
   .sted-tabs {
@@ -69,7 +69,7 @@
     color: #2b2a28;
     cursor: pointer;
     font-family: inherit;
-    font-weight: 300;
+    font-weight: 400;
   }
   .sted-tab:hover { background: #f0efe9; }
   .sted-tab.active.farge-blue { background: var(--c-blue); border-color: var(--c-blue); color: #f4f6f9; }
@@ -96,7 +96,7 @@
     gap: 14px;
     margin: 0 0 28px;
     font-size: 12px;
-    color: #8a8880;
+    color: #605f59;
   }
   .legend span { display: flex; align-items: center; gap: 6px; }
   .legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
@@ -105,10 +105,10 @@
   .legend .dot-orange { background: var(--c-orange); }
   .legend .dot-blue { background: var(--c-blue); }
   .legend .dot-plum { background: var(--c-plum); }
-  .legend .dot-grey { background: #b6b3a8; }
+  .legend .dot-grey { background: #76746d; }
   select, button {
     font-family: inherit;
-    font-weight: 300;
+    font-weight: 400;
   }
   .who-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
   .who-pill-wrap { display: inline-flex; align-items: center; gap: 2px; }
@@ -121,7 +121,7 @@
     color: #2b2a28;
     cursor: pointer;
     font-family: inherit;
-    font-weight: 300;
+    font-weight: 400;
   }
   .who-btn:hover { background: var(--c-plum-bg); border-color: var(--c-plum-bd); }
   .who-btn.selected {
@@ -132,12 +132,12 @@
   .who-btn.who-add {
     background: none;
     border-style: dashed;
-    color: #8a8880;
+    color: #605f59;
   }
   .who-remove {
     background: none;
     border: none;
-    color: #b6b3a8;
+    color: #76746d;
     font-size: 12px;
     cursor: pointer;
     padding: 2px 4px;
@@ -161,11 +161,11 @@
   }
   section { margin-bottom: 36px; }
   h2 {
-    font-weight: 300;
+    font-weight: 400;
     font-size: 15px;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: #9c998f;
+    color: #6d6b64;
     margin: 0 0 14px;
   }
   .exhib-card {
@@ -176,13 +176,13 @@
     margin-bottom: 10px;
   }
   .exhib-card .name { font-size: 16px; margin-bottom: 2px; }
-  .exhib-card .dates { font-size: 13px; color: #8a8880; }
-  .exhib-card.active { border-left: 3px solid #a8a498; }
+  .exhib-card .dates { font-size: 13px; color: #605f59; }
+  .exhib-card.active { border-left: 3px solid #75726a; }
 
   .period-block { margin-bottom: 34px; }
   .period-header { margin-bottom: 10px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .period-header .pname { font-size: 18px; color: var(--accent); font-weight: 400; }
-  .period-header .pdates { font-size: 13px; color: #8a8880; }
+  .period-header .pdates { font-size: 13px; color: #605f59; }
   .period-header .badge {
     font-size: 11px;
     color: #4a4842;
@@ -194,7 +194,7 @@
   .period-header.editable:hover .pname { text-decoration: underline; }
   .period-header.editable .edit-hint {
     font-size: 12px;
-    color: #b6b3a8;
+    color: #76746d;
     opacity: 0;
   }
   .period-header.editable:hover .edit-hint { opacity: 1; }
@@ -234,12 +234,12 @@
   }
   .dinner-tab .dt-left { display: flex; flex-direction: column; }
   .dinner-tab .dt-title { font-size: 14px; }
-  .dinner-tab .dt-date { font-size: 12px; color: #8a8880; }
+  .dinner-tab .dt-date { font-size: 12px; color: #605f59; }
   .dinner-tab .dt-right { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .day-rows { margin-top: 4px; }
   .period-label {
     font-size: 13px;
-    color: #a8a498;
+    color: #75726a;
     margin: 22px 0 8px;
     padding-top: 6px;
   }
@@ -262,11 +262,11 @@
   .day-row.status-orange { background: var(--c-orange-bg); border-color: var(--c-orange-bd); border-left-color: var(--c-orange); }
   .day-row.today { box-shadow: 0 0 0 1px #b9b6ab inset; }
   .day-left .weekday { font-size: 15px; }
-  .day-left .datestr { font-size: 12px; color: #8a8880; }
+  .day-left .datestr { font-size: 12px; color: #605f59; }
   .day-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
   .tid-tag {
     font-size: 12px;
-    color: #8a8880;
+    color: #605f59;
     cursor: pointer;
     margin-top: 2px;
     display: inline-block;
@@ -301,11 +301,12 @@
   }
   .tag.mine { background: #d9d4c3; }
   .tag.opening-tag { background: var(--c-orange-bg); color: var(--c-orange); }
+  .tag.helligdag { background: var(--c-plum-bg); color: var(--c-plum); }
   .tag button.remove {
     background: none;
     border: none;
     cursor: pointer;
-    color: #8a8880;
+    color: #605f59;
     font-size: 13px;
     padding: 0;
     line-height: 1;
@@ -314,13 +315,13 @@
   .del-day-btn {
     background: none;
     border: 1px solid #d8d6cd;
-    color: #b6b3a8;
+    color: #76746d;
     border-radius: 999px;
     padding: 5px 12px;
     font-size: 13px;
     cursor: pointer;
     font-family: inherit;
-    font-weight: 300;
+    font-weight: 400;
   }
   .del-day-btn:hover { border-color: #e3bcb2; color: #b04a3c; background: var(--c-red-bg); }
   .claim-btn, .rsvp-btn {
@@ -334,7 +335,7 @@
   }
   .claim-btn:hover, .rsvp-btn:hover { background: #46443f; }
   .claim-btn:disabled, .rsvp-btn:disabled { opacity: 0.4; cursor: default; }
-  .empty-slot { font-size: 13px; color: #b6b3a8; font-style: italic; }
+  .empty-slot { font-size: 13px; color: #76746d; font-style: italic; }
   .dinner-card {
     background: #f8f7f4;
     border: 1px solid #e2e0d9;
@@ -342,11 +343,11 @@
     padding: 18px;
   }
   .dinner-card .dtitle { font-size: 17px; margin-bottom: 2px; }
-  .dinner-card .ddate { font-size: 13px; color: #8a8880; margin-bottom: 14px; }
+  .dinner-card .ddate { font-size: 13px; color: #605f59; margin-bottom: 14px; }
   .rsvp-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-  .hint { font-size: 12px; color: #b6b3a8; margin-top: 16px; }
-  footer.foot { text-align: center; font-size: 12px; color: #b6b3a8; margin-top: 40px; }
-  .loading { color: #8a8880; font-size: 14px; }
+  .hint { font-size: 12px; color: #76746d; margin-top: 16px; }
+  footer.foot { text-align: center; font-size: 12px; color: #76746d; margin-top: 40px; }
+  .loading { color: #605f59; font-size: 14px; }
 
   .admin-toggle {
     background: none;
@@ -362,9 +363,9 @@
   .admin-panel { display: none; }
   .admin-block { margin-bottom: 24px; }
   .admin-block h3 {
-    font-weight: 300;
+    font-weight: 400;
     font-size: 13px;
-    color: #9c998f;
+    color: #6d6b64;
     margin: 0 0 10px;
   }
   .admin-exhib-row {
@@ -376,7 +377,7 @@
     font-size: 14px;
   }
   .admin-exhib-row .row-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .admin-exhib-row .dates { font-size: 12px; color: #8a8880; }
+  .admin-exhib-row .dates { font-size: 12px; color: #605f59; }
   .admin-exhib-row .actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .small-btn {
     background: none;
@@ -388,7 +389,7 @@
     cursor: pointer;
   }
   .small-btn:hover { background: #f0efe9; }
-  .small-btn.active-btn { border-color: #a8a498; color: #4a4842; }
+  .small-btn.active-btn { border-color: #75726a; color: #4a4842; }
   .admin-form {
     display: flex;
     flex-wrap: wrap;
@@ -416,8 +417,9 @@
   .tag.work.henterunde { background: var(--c-orange-bg); color: var(--c-orange); }
   .tag.unavail { background: var(--c-red-bg); color: var(--c-red); }
   .exhib-notes { margin: 6px 0 8px; }
-  .exhib-note { font-size: 12px; color: #a8a498; margin: 2px 0; }
+  .exhib-note { font-size: 12px; color: #75726a; margin: 2px 0; }
   .exhib-note.special { color: var(--accent); }
+  .exhib-note.helligdag { color: var(--c-plum); }
   .kal-day {
     background: #f8f7f4;
     border: 1px solid #e2e0d9;
@@ -434,7 +436,7 @@
   .kal-week { margin-bottom: 18px; }
   .kal-week-label {
     font-size: 12px;
-    color: #9c998f;
+    color: #6d6b64;
     text-transform: uppercase;
     letter-spacing: 1px;
     margin: 0 0 8px;
@@ -559,6 +561,68 @@ function toIsoLocal(d) {
 }
 function todayIso() {
   return toIsoLocal(new Date());
+}
+
+// ---------- Norske helligdager ----------
+// Beregner påskedag (gregoriansk) for et gitt år, med Gauss' algoritme
+function paaskedagForAar(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31); // 3 = mars, 4 = april
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+
+const helligdagCache = {};
+
+// Alle offisielle norske helligdager («røde dager», da butikker som regel har stengt)
+// for et gitt år, som dato (YYYY-MM-DD) -> navn
+function helligdagerForAar(year) {
+  if (helligdagCache[year]) return helligdagCache[year];
+  const paaske = paaskedagForAar(year);
+  const leggTil = (dagerFraPaaske) => {
+    const d = new Date(paaske.getTime());
+    d.setDate(d.getDate() + dagerFraPaaske);
+    return toIsoLocal(d);
+  };
+  const map = {};
+  // Enkelte år faller f.eks. 17. mai og 2. pinsedag på samme dato - da slår vi
+  // sammen navnene i stedet for at det ene overskriver det andre.
+  const settHelligdag = (dato, navn) => {
+    map[dato] = map[dato] ? `${map[dato]} / ${navn}` : navn;
+  };
+  settHelligdag(`${year}-01-01`, 'Første nyttårsdag');
+  settHelligdag(leggTil(-3), 'Skjærtorsdag');
+  settHelligdag(leggTil(-2), 'Langfredag');
+  settHelligdag(leggTil(0), '1. påskedag');
+  settHelligdag(leggTil(1), '2. påskedag');
+  settHelligdag(`${year}-05-01`, '1. mai');
+  settHelligdag(`${year}-05-17`, '17. mai');
+  settHelligdag(leggTil(39), 'Kristi himmelfartsdag');
+  settHelligdag(leggTil(49), '1. pinsedag');
+  settHelligdag(leggTil(50), '2. pinsedag');
+  settHelligdag(`${year}-12-25`, '1. juledag');
+  settHelligdag(`${year}-12-26`, '2. juledag');
+  helligdagCache[year] = map;
+  return map;
+}
+
+// Navnet på helligdagen for en gitt dato (eller null) - dette er dager da de fleste
+// butikker har stengt, men vi holder åpent
+function helligdagFor(dato) {
+  const year = parseInt(dato.slice(0, 4), 10);
+  const map = helligdagerForAar(year);
+  return map[dato] || null;
 }
 
 // ---------- Steder (Soli / Fredrikstad / Smia) ----------
@@ -839,6 +903,8 @@ function dayRowHtml(dato, rows, today, isOpeningDay) {
     claimBtn = `<span class="empty-slot">velg navn øverst</span>`;
   }
   const openingTag = isOpeningDay ? '<span class="tag opening-tag">Åpningsdag</span>' : '';
+  const helligdagNavn = helligdagFor(dato);
+  const helligdagTag = helligdagNavn ? `<span class="tag helligdag" title="De fleste butikker har stengt denne dagen, men vi holder åpent">🎉 ${helligdagNavn}</span>` : '';
   const deleteBtn = `<button class="del-day-btn" onclick="deleteVaktDag('${dato}')" title="Slett denne dagen fra vaktplanen">🗑 Slett dag</button>`;
 
   const tid = tidForRows(rows);
@@ -858,7 +924,7 @@ function dayRowHtml(dato, rows, today, isOpeningDay) {
       <div class="weekday">${fmtDate(dato)}${isToday ? ' · i dag' : ''}</div>
       ${tidHtml}
     </div>
-    <div class="day-right">${openingTag}${tagsHtml}${claimBtn}${deleteBtn}</div>
+    <div class="day-right">${openingTag}${helligdagTag}${tagsHtml}${claimBtn}${deleteBtn}</div>
   </div>`;
 }
 
@@ -1412,9 +1478,12 @@ function kalenderDayRowHtml(dato, today, ds, compact) {
   const isClosed = !!(ds && ds.stengt);
 
   const exs = utstillinger.filter(u => dateInExhibRange(u, dato));
-  const exhibNotesHtml = exs.length
-    ? `<div class="exhib-notes">${exs.map(u => { const n = exhibitionNoteFor(u, dato); return `<div class="exhib-note ${n.special ? 'special' : ''}">${n.text}</div>`; }).join('')}</div>`
-    : '';
+  const notesArr = exs.map(u => { const n = exhibitionNoteFor(u, dato); return `<div class="exhib-note ${n.special ? 'special' : ''}">${n.text}</div>`; });
+  const helligdagNavn = helligdagFor(dato);
+  if (helligdagNavn) {
+    notesArr.push(`<div class="exhib-note helligdag" title="De fleste butikker har stengt denne dagen, men vi holder åpent">🎉 ${helligdagNavn} – vi holder åpent</div>`);
+  }
+  const exhibNotesHtml = notesArr.length ? `<div class="exhib-notes">${notesArr.join('')}</div>` : '';
 
   let closeControlHtml = '';
   if (isClosed) {

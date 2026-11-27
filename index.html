@@ -488,6 +488,49 @@
   .kal-tid-plain { font-size: 11px; color: #6d6b63; }
   .tag.mine .kal-tid-tag, .tag.mine .kal-tid-plain { color: #4a4842; }
   .kal-day-compact .kal-tid-tag, .kal-day-compact .kal-tid-plain { font-size: 10px; }
+  .notat-box {
+    margin: 0 0 28px;
+    background: #f8f7f4;
+    border: 1px solid #e2e0d9;
+    border-left: 4px solid var(--c-plum);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .notat-box-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .notat-box h3 {
+    font-weight: 400;
+    font-size: 14px;
+    color: #4a4842;
+    text-transform: none;
+    letter-spacing: normal;
+    margin: 0;
+  }
+  .notat-text {
+    font-size: 14px;
+    color: #2b2a28;
+    white-space: pre-wrap;
+    margin: 0;
+  }
+  .notat-box textarea {
+    width: 100%;
+    min-height: 90px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #d8d6cd;
+    background: #fff;
+    font-size: 14px;
+    color: #2b2a28;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+  }
+  .notat-actions { display: flex; gap: 8px; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -517,6 +560,8 @@
     <span><i class="dot dot-orange"></i> åpningsdag, trenger minst 2</span>
     <span><i class="dot dot-blue"></i> åpningsmiddag</span>
   </div>
+
+  <div id="soli-notat-box"></div>
 
   <section id="periods-section">
     <div id="periods-list" class="loading">Laster …</div>
@@ -662,6 +707,7 @@ function selectSted(slug) {
   editingKalTidId = null;
   kalenderDays = 21;
   kalViewStart = null;
+  editingSoliNotat = false;
 
   document.getElementById('admin-toggle-btn').textContent = sted.visning === 'kalender'
     ? (sted.slug === 'smia' ? 'Legg til hendelse' : 'Legg til utstilling / hendelse')
@@ -706,9 +752,76 @@ async function refreshStedData() {
 }
 
 function renderStedList() {
+  renderSoliNotatBox();
   if (currentSted.visning === 'kalender') renderKalender();
   else renderPeriods();
 }
+
+// ---------- Notatboks for spesielle ting som skjer på Soli ----------
+let editingSoliNotat = false;
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function renderSoliNotatBox() {
+  const el = document.getElementById('soli-notat-box');
+  if (!el) return;
+  if (!currentSted || currentSted.slug !== 'soli') { el.innerHTML = ''; return; }
+  const notat = currentSted.notat || '';
+  if (editingSoliNotat) {
+    el.innerHTML = `<div class="notat-box">
+      <div class="notat-box-head">
+        <h3>📋 Spesielle ting som skjer på Soli</h3>
+      </div>
+      <textarea id="soli-notat-input" placeholder="Skriv inn spesielle ting som skjer på Soli …">${escapeHtml(notat)}</textarea>
+      <div class="notat-actions">
+        <button class="claim-btn" onclick="saveSoliNotat()">Lagre</button>
+        <button class="small-btn" onclick="cancelEditSoliNotat()">Avbryt</button>
+      </div>
+    </div>`;
+    const inp = document.getElementById('soli-notat-input');
+    if (inp) inp.focus();
+  } else {
+    el.innerHTML = `<div class="notat-box">
+      <div class="notat-box-head">
+        <h3>📋 Spesielle ting som skjer på Soli</h3>
+        <button class="small-btn" onclick="startEditSoliNotat()">✎ ${notat ? 'Endre' : 'Skriv inn'}</button>
+      </div>
+      ${notat ? `<p class="notat-text">${escapeHtml(notat).replace(/\n/g, '<br>')}</p>` : '<p class="empty-slot">Ingenting notert ennå.</p>'}
+    </div>`;
+  }
+}
+window.renderSoliNotatBox = renderSoliNotatBox;
+
+function startEditSoliNotat() {
+  editingSoliNotat = true;
+  renderSoliNotatBox();
+}
+window.startEditSoliNotat = startEditSoliNotat;
+
+function cancelEditSoliNotat() {
+  editingSoliNotat = false;
+  renderSoliNotatBox();
+}
+window.cancelEditSoliNotat = cancelEditSoliNotat;
+
+async function saveSoliNotat() {
+  const inp = document.getElementById('soli-notat-input');
+  const val = inp.value.trim() || null;
+  const { error } = await sb.from('fr_steder').update({ notat: val }).eq('id', currentSted.id);
+  if (error) { alert('Kunne ikke lagre: ' + error.message); return; }
+  currentSted.notat = val;
+  const idx = steder.findIndex(s => s.id === currentSted.id);
+  if (idx !== -1) steder[idx] = currentSted;
+  editingSoliNotat = false;
+  renderSoliNotatBox();
+}
+window.saveSoliNotat = saveSoliNotat;
 
 // ---------- Ansatte (navn) ----------
 let ansatte = [];
@@ -1481,7 +1594,7 @@ function kalenderDayRowHtml(dato, today, ds, compact) {
   const notesArr = exs.map(u => { const n = exhibitionNoteFor(u, dato); return `<div class="exhib-note ${n.special ? 'special' : ''}">${n.text}</div>`; });
   const helligdagNavn = helligdagFor(dato);
   if (helligdagNavn) {
-    notesArr.push(`<div class="exhib-note helligdag" title="De fleste butikker har stengt denne dagen, men vi holder åpent">🎉 ${helligdagNavn} – vi holder åpent</div>`);
+    notesArr.push(`<div class="exhib-note helligdag" title="De fleste butikker har stengt denne dagen, men vi holder åpent">🎉 ${helligdagNavn}</div>`);
   }
   const exhibNotesHtml = notesArr.length ? `<div class="exhib-notes">${notesArr.join('')}</div>` : '';
 
